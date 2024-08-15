@@ -164,3 +164,7 @@ cython_debug/
 # data
 */*/data
 */*/data_raw
+
+
+# ignore toys.py
+toy*.*
