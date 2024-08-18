@@ -16,21 +16,11 @@ dotenv.load_dotenv()
 
 vector_db_dir = 'data_chroma'
 collection_name = 'test_db'
-if Path(vector_db_dir).exists():
-    vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(), create_collection_if_not_exists=False, collection_name=collection_name)
-    print(f"{vectorstore._chroma_collection.count()} documents loaded")
-    print(f"collection_id: {vectorstore._chroma_collection.id}")
-    # 26c7fffa-e8e5-4179-90e4-aac418d91734
-else:
-    # walk through the text files under "data" directory
-    docs = []
-    for file in glob.glob("data/*.txt"):
-        loader = TextLoader(file)
-        _docs = loader.load()
-        docs += _docs
 
-    print(f"Loaded {len(docs)} documents")
+from langchain_core.documents import Document
 
+
+def get_chunks(docs: list[Document]):
     # split the documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=512,
@@ -38,12 +28,31 @@ else:
         add_start_index=True,
     )
 
-    all_splits = text_splitter.split_documents(docs)
-    print(f"Split the documents into {len(all_splits)} chunks")
+    return text_splitter.split_documents(docs)
+
+
+def load_documents(pathname: str):
+    docs = []
+    for file in glob.glob(pathname):
+        loader = TextLoader(file)
+        _docs = loader.load()
+        docs += _docs
+    return docs
+
+
+if Path(vector_db_dir).exists():
+    vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(), create_collection_if_not_exists=False, collection_name=collection_name)
+    print(f"Loaded {vectorstore._chroma_collection.count()} documents")
+else:
+    # walk through the text files under "data" directory
+    docs = load_documents("data/*.txt")
+    print(f"Loaded {len(docs)} documents")
+
+    chunks = get_chunks(docs)
+    print(f"Split the documents into {len(chunks)} chunks")
+
     vectorstore = Chroma.from_documents(
-        documents=all_splits, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir, collection_name=collection_name)
-    print(f"collection_id: {vectorstore._chroma_collection.id}")
-    # collection_id: 79d6b36b-9568-43d5-8f4f-01fa1113a737
+        documents=chunks, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir, collection_name=collection_name)
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
