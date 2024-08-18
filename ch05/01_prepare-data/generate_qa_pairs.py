@@ -25,11 +25,12 @@ def get_all_splits():
 
 
 QUESTION_GEN_SYS_TMPL = SystemMessagePromptTemplate.from_template("""\
-You are a Teacher/ Professor. Your task is to setup \
+You are a Teacher. Your task is to setup \
 {num_questions_per_chunk} questions for an upcoming \
 quiz/examination. The questions should be diverse in nature \
 across the document. Restrict the questions to the \
 context information provided.\
+ALL THE QUESTIONS MUST BE IN CHINESE.\
 """)
 
 QUESTION_GEN_USER_TMPL = HumanMessagePromptTemplate.from_template(
@@ -39,13 +40,6 @@ QUESTION_GEN_USER_TMPL = HumanMessagePromptTemplate.from_template(
     "---------------------\n"
     "Given the context information and not prior knowledge, "
     "generate the relevant questions. "
-)
-
-QA_PROMPT_TMPL = HumanMessagePromptTemplate.from_template(
-    "Given the context information and not prior knowledge, "
-    "answer the query.\n"
-    "Query: {query}\n"
-    "Answer: "
 )
 
 result = QUESTION_GEN_USER_TMPL.format(
@@ -65,13 +59,50 @@ from langchain_core.output_parsers import StrOutputParser
 dotenv.load_dotenv()
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 
-snippet_list = get_all_splits()
-chain = (
+# snippet_list = get_all_splits()
+from langchain_chroma import Chroma
+
+vectorstore = Chroma(persist_directory='data_chroma', collection_name='test_db')
+
+ids = vectorstore.get()['ids']
+import random
+random.shuffle(ids)
+selected_docs = {k: v for k, v in vectorstore.get(ids=ids[:3]).items() if k in ("ids", "metadatas", "documents")}
+
+# `selected_docs` is A dict with the keys `"ids"`, `"embeddings"`, `"metadatas"`, `"documents"`. Convert a dictionary `selected_docs` to a list of dictionaries with the same keys.
+selected_docs = [dict(zip(selected_docs, t)) for t in zip(*selected_docs.values())]
+
+results = []
+for doc in selected_docs:
+    chain = (
         prompt
         | llm
         | StrOutputParser()
-)
-chain.invoke({
-    "context_str": snippet_list[0].page_content,
-    "num_questions_per_chunk": 3
-})
+    )
+
+    result = chain.invoke({
+        "context_str": doc['documents'],
+        "num_questions_per_chunk": 1
+    })
+
+    doc["question"] = result
+    results.append(doc)
+
+import json
+# write results into a json file `qa_pairs.json`
+with open("qa_pairs.json", "w") as f:
+    json.dump(results, f, indent=4, ensure_ascii=False)
+
+# chain = (
+#         prompt
+#         | llm
+#         | StrOutputParser()
+# )
+#
+# results = chain.invoke({
+#     "context_str": selected_doc['documents'][0],
+#     "num_questions_per_chunk": 1
+# })
+#
+# selected_doc["question"] = results
+# print(selected_doc)
