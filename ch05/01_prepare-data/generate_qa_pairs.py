@@ -52,7 +52,7 @@ vectorstore = Chroma(persist_directory='data_chroma', collection_name='test_db')
 ids = vectorstore.get()['ids']
 
 random.shuffle(ids)
-selected_docs = {k: v for k, v in vectorstore.get(ids=ids[:20]).items() if k in ("ids", "metadatas", "documents")}
+selected_docs = {k: v for k, v in vectorstore.get(ids=ids[:100]).items() if k in ("ids", "metadatas", "documents")}
 
 # `selected_docs` is A dict with the keys `"ids"`, `"embeddings"`, `"metadatas"`, `"documents"`. Convert a dictionary `selected_docs` to a list of dictionaries with the same keys.
 selected_docs = [dict(zip(selected_docs, t)) for t in zip(*selected_docs.values())]
