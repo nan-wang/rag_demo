@@ -55,8 +55,10 @@ print(f"Retrieved doc meta, {retrieved_docs[0].metadata}")
 
 sys.exit(0)
 
+
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 prompt = hub.pull("rlm/rag-prompt")
+
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
