@@ -102,3 +102,9 @@ def load_documents(pathname: str):
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
+
+
+def split_contexts(contexts):
+    pattern = r'(?=article_title:)'
+    # Split the text using the regex pattern
+    return [part.strip() for part in re.split(pattern, contexts) if part.strip()]
