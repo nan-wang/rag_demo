@@ -164,7 +164,13 @@ cython_debug/
 # data
 */*/data
 */*/data_*
+*/data_*
 
 
 # ignore toys.py
 toy*.*
+
+*/*/*.json
+*/*/.DS_Store
+.DS_Store
+
