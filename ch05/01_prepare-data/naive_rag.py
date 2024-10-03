@@ -13,17 +13,8 @@ from utils import load_documents, get_chunks, format_docs, split_contexts
 
 dotenv.load_dotenv()
 
-vector_db_dir = 'data_chroma'
+vector_db_dir = '../data_chroma'
 collection_name = 'test_db'
-
-
-
-
-docs = load_documents("data/*.txt")
-print(f"Loaded {len(docs)} documents")
-
-chunks = get_chunks(docs)
-print(f"Split the documents into {len(chunks)} chunks")
 
 
 if Path(vector_db_dir).exists():
@@ -42,12 +33,14 @@ else:
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-# retrieved_docs = retriever.invoke("中国第一次参加冬奥会是哪一年?")
-#
+query = "介绍北京申办奥运会的历史"
+# retrieved_docs = retriever.invoke(query)
+
 # print(f"Retrieved {len(retrieved_docs)} documents")
 # for doc in retrieved_docs:
 #     print(f"Retrieved doc, {repr(doc.page_content[:100])}")
 #     print(f"Retrieved doc meta, {doc.metadata}")
+# exit(0)
 
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
@@ -61,12 +54,11 @@ rag_chain = (
             answer=prompt | llm | StrOutputParser())
 )
 
-# query = "中华人民共和国第一次参加冬奥会是哪一年?"
-#
-# result = rag_chain.invoke(query)
-# print(result)
-#
-# sys.exit(0)
+
+result = rag_chain.invoke(query)
+print(result)
+
+sys.exit(0)
 
 # load the evaluation data from `data_eval/qa_pairs.json`
 examples = []
