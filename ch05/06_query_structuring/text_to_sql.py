@@ -1,96 +1,72 @@
-import sys
-import json
-
 import dotenv
-from pathlib import Path
-from langchain import hub
-from langchain_chroma import Chroma
-from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnablePick
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from utils import load_documents, get_chunks, format_docs, split_contexts
+from langchain_core.runnables import RunnableParallel, RunnablePick
+from langchain_openai import ChatOpenAI
 
 dotenv.load_dotenv()
 
-from typing import Literal
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_openai import ChatOpenAI
+from langchain_community.utilities import SQLDatabase
+from langchain.chains import create_sql_query_chain
 
+db_name = "olympic_games"
+db = SQLDatabase.from_uri(f"sqlite:///{db_name}.db")
 
-class RouteQuery(BaseModel):
-    """Route a user query to the most relevant datasource."""
+# https://python.langchain.com/docs/tutorials/sql_qa/#chains
 
-    datasource: Literal["hosts", "medals", "general_description"] = Field(
-        ...,
-        description="Given a user query, route it to the most relevant datasource for answering their question",
-    )
+from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06", temperature=0)
+prompt_str = """You are a SQLite expert. Given an input question, first create a syntactically correct SQLite query to run, then look at the results of the query and return the answer to the input question.
+Unless the user specifies in the question a specific number of examples to obtain, query for at most {top_k} results using the LIMIT clause as per SQLite. You can order the results to return the most informative data in the database.
+Never query for all columns from a table. You must query only the columns that are needed to answer the question. Wrap each column name in double quotes (") to denote them as delimited identifiers.
+Pay attention to use only the column names you can see in the tables below. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
+Pay attention to use date('now') function to get the current date, if the question involves "today".
 
-structure_llm = llm.with_structured_output(RouteQuery)
+Question: Question here
+SQLQuery: SQL Query to run. Don't use the sql markdown grammar.
 
-system = """You are an expert at routing a user question to the appropriate datasource.
-Based on the information needed to answer the user's question, you route the question to the most relevant datasource.
-The default datasource is `general_description` which contains wiki pages about the Olympics from 1980 to 2024.
+Only use the following tables:
+{table_info}
+
+Don't start the reply with `SQLQuery: `!!!
+
+Question: {input}
+"""
+from langchain.prompts import PromptTemplate
+
+prompt = PromptTemplate.from_template(prompt_str)
+execute_query = QuerySQLDataBaseTool(db=db)
+write_query = create_sql_query_chain(llm, db, prompt=prompt)
+
+answer_prompt_str = """Given the following user question, corresponding SQL query, and SQL result, answer the user question.
+
+Question: {question}
+SQL Query: {query}
+SQL Result: {result}
+Answer: 
 """
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", system),
-        ("human", "{question}"),
-    ]
-)
+answer_prompt = PromptTemplate.from_template(answer_prompt_str)
 
-router = prompt | structure_llm
-
-query = "里约奥运会哪个国家获得的金牌最多?"
-result = router.invoke({"question": query})
-print(result)
-exit(0)
-
-vector_db_dir = '../data_chroma'
-collection_name = 'test_db'
-
-
-if Path(vector_db_dir).exists():
-    vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(), create_collection_if_not_exists=False, collection_name=collection_name)
-    print(f"Loaded {vectorstore._chroma_collection.count()} documents")
-else:
-    # walk through the text files under "data" directory
-    docs = load_documents("data/*.txt")
-    print(f"Loaded {len(docs)} documents")
-
-    chunks = get_chunks(docs)
-    print(f"Split the documents into {len(chunks)} chunks")
-
-    vectorstore = Chroma.from_documents(
-        documents=chunks, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir, collection_name=collection_name)
-
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-
-query = "介绍北京申办奥运会的历史"
-# retrieved_docs = retriever.invoke(query)
-
-# print(f"Retrieved {len(retrieved_docs)} documents")
-# for doc in retrieved_docs:
-#     print(f"Retrieved doc, {repr(doc.page_content[:100])}")
-#     print(f"Retrieved doc meta, {doc.metadata}")
-# exit(0)
-
-
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
-prompt = hub.pull("rlm/rag-prompt")
-
-rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | RunnableParallel(
-            contexts=RunnablePick("context"),
+chain = (
+        RunnableParallel(
             question=RunnablePick("question"),
-            answer=prompt | llm | StrOutputParser())
+            query=write_query)
+        | RunnableParallel(
+            question=RunnablePick("question"),
+            query=RunnablePick("query"),
+            result=RunnablePick("query") | execute_query)
+        | answer_prompt
+        | llm
+        | StrOutputParser()
 )
-
-
-result = rag_chain.invoke(query)
+# chain = (
+#     RunnablePassthrough.assign(query=write_query).assign(
+#         result=itemgetter("query") | execute_query
+#     )
+#     | answer_prompt
+#     | llm
+#     | StrOutputParser()
+# )
+result = chain.invoke({"question": "中国队在巴黎奥运会上有多少运动员获得金牌?"})
