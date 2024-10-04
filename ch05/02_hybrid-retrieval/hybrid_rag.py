@@ -19,7 +19,7 @@ dotenv.load_dotenv()
 
 def get_all_splits():
     docs = []
-    for file in glob.glob("data/*.txt"):
+    for file in glob.glob("../data/*.txt"):
         loader = TextLoader(file)
         _docs = loader.load()
         docs += _docs
@@ -36,7 +36,7 @@ def get_all_splits():
     return text_splitter.split_documents(docs)
 
 
-vector_db_dir = 'data_chroma'
+vector_db_dir = '../data_chroma'
 collection_name = 'test_db'
 if Path(vector_db_dir).exists():
     vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(),
@@ -99,7 +99,10 @@ rag_chain = (
         | StrOutputParser()
 )
 
-query = "哪一届奥运会第一次发现了兴奋剂？"
+query = "中国在奥运会上有哪些重要历史时刻?"
+# query = "哪一届奥运会第一次发现了兴奋剂？"
 
 result = rag_chain.invoke(query)
 print(result)
+
+# 中国在奥运会的历史上有几个重要时刻。1984年洛杉矶奥运会上，许海峰为中国赢得了第一枚奥运金牌，实现了零的突破。2008年北京奥运会上，中国以51枚金牌首次登上金牌榜首，进一步确立了其体育强国地位。
