@@ -33,7 +33,8 @@ else:
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-query = "介绍北京申办奥运会的历史"
+query = "2020奥运会有哪些兴奋剂相关新闻?"
+# query = "介绍北京申办奥运会的历史"
 # retrieved_docs = retriever.invoke(query)
 
 # print(f"Retrieved {len(retrieved_docs)} documents")
