@@ -79,7 +79,7 @@ def get_chunks(docs: list[Document]):
     section_docs = []
     for doc in docs:
         section_list = split_sections(doc.page_content)
-        section_docs += create_section_documents(section_list, doc.metadata)
+        section_docs += create_section_documents(section_list, doc.metadata, False, False)
 
     # split the sections into chunks
     text_splitter = RecursiveCharacterTextSplitter(
@@ -88,7 +88,22 @@ def get_chunks(docs: list[Document]):
         add_start_index=True,
     )
 
-    return text_splitter.split_documents(section_docs)
+    _chunks = text_splitter.split_documents(section_docs)
+
+    chunks = []
+    for doc in _chunks:
+        metadata = doc.metadata
+        section_title = metadata["section_title"]
+        if metadata["parent_section"]:
+            section_title = f"{metadata['parent_section']}_{section_title}"
+        if not doc.page_content.startswith("article_title:"):
+            content = f"section_title: {section_title}\ncontent: {doc.page_content}"
+            title = Path(metadata.get("source", "")).name.removesuffix(".txt")
+            content = f"article_title: {title}\n{content}"
+            doc.page_content = content
+            print(f"Updated content: {doc.page_content}")
+        chunks.append(doc)
+    return chunks
 
 
 def load_documents(pathname: str):

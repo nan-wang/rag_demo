@@ -33,16 +33,19 @@ else:
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-query = "2024巴黎奥运会有棒球么?"
+query = "奥运火炬传递到达过珠峰吗?"
+# query = "奥运会是什么时候开始停止支持4:3全屏转播的?"
+# query = "中国在越野滑雪项目中的表现怎么样?"
+# query = "2024巴黎奥运会有棒球么?"
 # query = "2020奥运会有哪些兴奋剂相关新闻?"
 # query = "介绍北京申办奥运会的历史"
-retrieved_docs = retriever.invoke(query)
-
-print(f"Retrieved {len(retrieved_docs)} documents")
-for doc in retrieved_docs:
-    print(f"Retrieved doc, {repr(doc.page_content[:100])}")
-    # print(f"Retrieved doc meta, {doc.metadata}")
-exit(0)
+# retrieved_docs = retriever.invoke(query)
+#
+# print(f"Retrieved {len(retrieved_docs)} documents")
+# for doc in retrieved_docs:
+#     print(f"Retrieved doc, {repr(doc.page_content)}")
+#     # print(f"Retrieved doc meta, {doc.metadata}")
+# exit(0)
 
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
