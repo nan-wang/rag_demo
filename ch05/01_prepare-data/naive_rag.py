@@ -33,14 +33,15 @@ else:
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-query = "2020奥运会有哪些兴奋剂相关新闻?"
+query = "巴黎奥运会有棒球么?"
+# query = "2020奥运会有哪些兴奋剂相关新闻?"
 # query = "介绍北京申办奥运会的历史"
 # retrieved_docs = retriever.invoke(query)
-
+#
 # print(f"Retrieved {len(retrieved_docs)} documents")
 # for doc in retrieved_docs:
 #     print(f"Retrieved doc, {repr(doc.page_content[:100])}")
-#     print(f"Retrieved doc meta, {doc.metadata}")
+#     # print(f"Retrieved doc meta, {doc.metadata}")
 # exit(0)
 
 
@@ -58,6 +59,7 @@ rag_chain = (
 
 result = rag_chain.invoke(query)
 print(result)
+print(result['answer'])
 
 sys.exit(0)
 
