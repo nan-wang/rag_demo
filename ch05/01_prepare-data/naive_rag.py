@@ -22,7 +22,7 @@ if Path(vector_db_dir).exists():
     print(f"Loaded {vectorstore._chroma_collection.count()} documents")
 else:
     # walk through the text files under "data" directory
-    docs = load_documents("data/*.txt")
+    docs = load_documents("../data/*.txt")
     print(f"Loaded {len(docs)} documents")
 
     chunks = get_chunks(docs)
@@ -33,16 +33,16 @@ else:
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-query = "巴黎奥运会有棒球么?"
+query = "2024巴黎奥运会有棒球么?"
 # query = "2020奥运会有哪些兴奋剂相关新闻?"
 # query = "介绍北京申办奥运会的历史"
-# retrieved_docs = retriever.invoke(query)
-#
-# print(f"Retrieved {len(retrieved_docs)} documents")
-# for doc in retrieved_docs:
-#     print(f"Retrieved doc, {repr(doc.page_content[:100])}")
-#     # print(f"Retrieved doc meta, {doc.metadata}")
-# exit(0)
+retrieved_docs = retriever.invoke(query)
+
+print(f"Retrieved {len(retrieved_docs)} documents")
+for doc in retrieved_docs:
+    print(f"Retrieved doc, {repr(doc.page_content[:100])}")
+    # print(f"Retrieved doc meta, {doc.metadata}")
+exit(0)
 
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
