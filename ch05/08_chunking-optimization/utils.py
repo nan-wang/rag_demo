@@ -225,9 +225,14 @@ def flatten_sections(hierarchy):
 
 
 def convert_chunks_to_documents(chunks):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=128, chunk_overlap=32, add_start_index=True,
-                                                   separators=['。', '！', '？', '\?', '\n\n', '\n', '\n\n\n'],
-                                                   is_separator_regex=True, keep_separator="end")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=128,
+        chunk_overlap=32,
+        add_start_index=True,
+        separators=['。', '！', '？', '\?', '\n\n', '\n', '\n\n\n'],
+        is_separator_regex=True,
+        keep_separator="end"
+    )
     # split the leaf chunks into sentences
     _chunks = []
     for chunk in chunks:
@@ -259,17 +264,17 @@ def convert_chunks_to_documents(chunks):
     for chunk in _chunks:
         if chunk["level"] == 0:
             continue
-        metadata = {
-            "section_title": chunk["title"],
-            "section_level": chunk["level"],
-            "section_index": chunk["index"],
-            "parent_sections": chunk["parents"],
-            "is_leaf": chunk["is_leaf"],
-        }
         content = []
         if chunk["is_leaf"]:
             for i, parent in enumerate(chunk["parents"]):
                 content.append(f"{'#'*(i+1)} {parent}")
             content.append(f"{'#'*(len(chunk['parents'])+1)} {chunk['title']}")
         content.append(chunk["content"])
+        metadata = {
+            "section_title": chunk["title"],
+            "section_level": chunk["level"],
+            "section_index": chunk["index"],
+            "parent_sections": "\n".join(chunk["parents"]),
+            "is_leaf": chunk["is_leaf"],
+        }
         yield Document(page_content="\n".join(content), metadata=metadata)
