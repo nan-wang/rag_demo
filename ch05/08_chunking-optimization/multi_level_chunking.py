@@ -66,6 +66,7 @@ rag_chain = (
     answer=prompt | llm | StrOutputParser())
 )
 
+# TODO: merge the duplicated documents after retrieving
 result = rag_chain.invoke(query)
 print(result)
 print(result['answer'])
