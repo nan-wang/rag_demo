@@ -17,10 +17,13 @@ data = {
 
 from ragas import evaluate
 from ragas.metrics import (
+    faithfulness,
     answer_relevancy,
     context_recall,
     context_precision,
 )
+faithfulness.llm = None
+faithfulness.embeddings = None
 answer_relevancy.llm = None
 context_recall.llm = None
 context_precision.llm = None
@@ -40,6 +43,7 @@ result = evaluate(
         context_precision,
         context_recall,
         answer_relevancy,
+        faithfulness,
     ],
     llm=llm,
     embeddings=OpenAIEmbeddings(),

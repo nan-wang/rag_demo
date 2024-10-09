@@ -249,6 +249,13 @@ def convert_chunks_to_documents(chunks):
             _chunks.append(chunk)
             continue
         chunk["is_leaf"] = False
+        # add title to the chunk content
+        content = []
+        for i, parent in enumerate(chunk["parents"]):
+            content.append(f"{'#'*(i+1)} {parent}")
+        content.append(f"{'#'*(len(chunk['parents'])+1)} {chunk['title']}")
+        content.append(chunk["content"])
+        chunk["content"] = "\n".join(content)
         _chunks.append(chunk)
         for i, sentence in enumerate(sentences):
             _chunks.append({
