@@ -171,12 +171,28 @@ def get_chunks(docs: list[Document]):
     return chunks
 
 
-def load_documents(pathname: str):
+def get_year(fn):
+    return int(Path(fn).stem[:4])
+
+
+def get_season(fn):
+    return Path(fn).stem[5:7]
+
+
+def load_documents(pathname: str, with_metadata=False):
     docs = []
     for file in glob.glob(pathname):
         loader = TextLoader(file)
         _docs = loader.load()
-        docs += _docs
+        if with_metadata:
+            year = get_year(file)
+            season = get_season(file)
+            for doc in _docs:
+                doc.metadata["year"] = year
+                doc.metadata["season"] = season
+                docs.append(doc)
+        else:
+            docs += _docs
     return docs
 
 
@@ -224,7 +240,7 @@ def flatten_sections(hierarchy):
     return flattened_list
 
 
-def convert_chunks_to_documents(chunks):
+def convert_chunks_to_documents(chunks, add_year=False, add_season=False):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=128,
         chunk_overlap=32,
@@ -271,6 +287,10 @@ def convert_chunks_to_documents(chunks):
     for chunk in _chunks:
         if chunk["level"] == 0:
             continue
+        if add_year:
+            chunk["year"] = get_year(chunk["parents"][0])
+        if add_season:
+            chunk["season"] = get_season(chunk["parents"][0])
         content = []
         if chunk["is_leaf"]:
             for i, parent in enumerate(chunk["parents"]):
@@ -283,5 +303,7 @@ def convert_chunks_to_documents(chunks):
             "section_index": chunk["index"],
             "parent_sections": "\n".join(chunk["parents"]),
             "is_leaf": chunk["is_leaf"],
+            "year": chunk["year"],
+            "season": chunk["season"],
         }
         yield Document(page_content="\n".join(content), metadata=metadata)

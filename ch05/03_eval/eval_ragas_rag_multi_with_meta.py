@@ -36,7 +36,7 @@ with open("data_eval/qa_pairs.v20241009.json", "r") as f:
         )
 
 # build the rag chain
-vector_db_dir = '../data_chroma'
+vector_db_dir = '../data_chroma_multi_with_metadata'
 collection_name = 'test_db'
 
 if Path(vector_db_dir).exists():
@@ -55,9 +55,34 @@ else:
         documents=chunks, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir,
         collection_name=collection_name)
 
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+from langchain.chains.query_constructor.base import AttributeInfo
+from langchain.retrievers.self_query.base import SelfQueryRetriever
+
+metadata_field_info = [
+    AttributeInfo(
+        name="year",
+        description="The year of the Olympic Games the document is about.",
+        type="int"),
+    AttributeInfo(
+        name="season",
+        description="The season of the Olympic Games the document is about.",
+        type="str"),
+]
+
+document_content_description = \
+    "General information about the Olympic Games between 1980 and 2024 from Wikipedia in Chinese."
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
+
+retriever = SelfQueryRetriever.from_llm(
+    llm,
+    vectorstore,
+    document_content_description,
+    metadata_field_info,
+    enable_limit=True,
+    search_kwargs={"k": 10},
+)
+
 prompt = hub.pull("rlm/rag-prompt")
 
 rag_chain = (
@@ -110,9 +135,9 @@ result = evaluate(
 
 eval_df = result.to_pandas()
 
-eval_df.to_json("eval_results.v20241009.json", orient="records", indent=4, force_ascii=False)
+eval_df.to_json("eval_results.multi-meta.v20241010.json", orient="records", indent=4, force_ascii=False)
 
 mask = ((eval_df["answer_relevancy"] < 0.5) | (eval_df["context_precision"] < 0.1))
 wrong_answers = eval_df[mask]
 
-wrong_answers.to_json("wrong_answers.v20241010.json", orient="records", indent=4, force_ascii=False)
+wrong_answers.to_json("wrong_answers.multi-meta.v20241010.json", orient="records", indent=4, force_ascii=False)

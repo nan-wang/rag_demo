@@ -10,6 +10,7 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel, Runn
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from ragas import evaluate
 from ragas.metrics import (
+    faithfulness,
     answer_relevancy,
     context_recall,
     context_precision,
@@ -36,7 +37,7 @@ with open("data_eval/qa_pairs.v20241009.json", "r") as f:
         )
 
 # build the rag chain
-vector_db_dir = '../data_chroma'
+vector_db_dir = '../data_chroma_multi'
 collection_name = 'test_db'
 
 if Path(vector_db_dir).exists():
@@ -55,7 +56,7 @@ else:
         documents=chunks, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir,
         collection_name=collection_name)
 
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 10})
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 prompt = hub.pull("rlm/rag-prompt")
@@ -89,6 +90,8 @@ data = {
 
 dataset = Dataset.from_dict(data)
 
+faithfulness.llm = None
+faithfulness.embeddings = None
 answer_relevancy.llm = None
 context_recall.llm = None
 context_precision.llm = None
@@ -103,6 +106,7 @@ result = evaluate(
         context_precision,
         context_recall,
         answer_relevancy,
+        faithfulness,
     ],
     llm=ChatOpenAI(model="gpt-4o-2024-08-06"),
     embeddings=OpenAIEmbeddings(),
@@ -110,9 +114,9 @@ result = evaluate(
 
 eval_df = result.to_pandas()
 
-eval_df.to_json("eval_results.v20241009.json", orient="records", indent=4, force_ascii=False)
+eval_df.to_json("eval_results.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
 
 mask = ((eval_df["answer_relevancy"] < 0.5) | (eval_df["context_precision"] < 0.1))
 wrong_answers = eval_df[mask]
 
-wrong_answers.to_json("wrong_answers.v20241010.json", orient="records", indent=4, force_ascii=False)
+wrong_answers.to_json("wrong_answers.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
