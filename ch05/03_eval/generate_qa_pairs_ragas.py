@@ -1,17 +1,21 @@
 import dotenv
+# pip install nest_asyncio
+import nest_asyncio
+from ragas.run_config import RunConfig
 
-from utils import load_documents, get_chunks
+nest_asyncio.apply()
 from ragas.testset.generator import TestsetGenerator
-from ragas.testset.evolutions import simple, reasoning, multi_context
+from ragas.testset.evolutions import simple, multi_context, reasoning, conditional
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 dotenv.load_dotenv()
 
-vector_db_dir = '../data_chroma'
+vector_db_dir = '../data_chroma_multi'
 collection_name = 'test_db'
 
 from langchain_chroma import Chroma
 from pathlib import Path
+
 if Path(vector_db_dir).exists():
     vectorstore = Chroma(
         persist_directory=vector_db_dir,
@@ -20,30 +24,70 @@ if Path(vector_db_dir).exists():
         collection_name=collection_name)
     print(f"Loaded {vectorstore._chroma_collection.count()} documents")
 from langchain_core.documents import Document
-documents = []
-for id in vectorstore.get()["ids"]:
-    doc = vectorstore.get(id)
-    documents.append(Document(page_content=doc["documents"][0], metadata=doc["metadatas"][0], id=doc["ids"][0]))
+import random
 
+documents = []
+ids = vectorstore.get()['ids']
+random.shuffle(ids)
+for id in ids[:10]:
+    doc = vectorstore.get(id)
+    if not doc["metadatas"][0]["is_leaf"]:
+        continue
+    documents.append(Document(page_content=doc["documents"][0], metadata=doc["metadatas"][0], id=doc["ids"][0]))
 
 # generator with openai models
 generator_llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 critic_llm = ChatOpenAI(model="gpt-4o-2024-08-06")
-embeddings = OpenAIEmbeddings()
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+from ragas.llms import LangchainLLMWrapper
+from ragas.testset.extractor import KeyphraseExtractor
+from ragas.testset.docstore import InMemoryDocumentStore
+from ragas.embeddings.base import (
+    LangchainEmbeddingsWrapper,
+)
+
+generator_llm_model = LangchainLLMWrapper(generator_llm)
+critic_llm_model = LangchainLLMWrapper(critic_llm)
+embeddings_model = LangchainEmbeddingsWrapper(embeddings)
+
+keyphrase_extractor = KeyphraseExtractor(llm=generator_llm_model)
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=512,
+    chunk_overlap=128,
+    add_start_index=True,
+    separators=['。', '！', '？', '\?', '\n\n', '\n', '\n\n\n'],
+    is_separator_regex=True,
+    keep_separator="end"
+)
+keyphrase_extractor.adapt(language="chinese")
+docstore = InMemoryDocumentStore(
+    splitter=splitter,
+    embeddings=embeddings_model,
+    extractor=keyphrase_extractor,
+    run_config=RunConfig(),
+)
+
+docstore.add_documents(documents)
 
 generator = TestsetGenerator.from_langchain(
     generator_llm,
     critic_llm,
-    embeddings
+    embeddings,
+    docstore=docstore
 )
 
 distributions = {
-    simple: 0.5,
-    multi_context: 0.4,
-    reasoning: 0.1
+    multi_context: 1.0,
 }
 
-# generate testset
-testset = generator.generate_with_langchain_docs(documents, test_size=20, distributions=distributions)
+generator.adapt(language="chinese", evolutions=[simple, reasoning, multi_context])
+# generator.save(evolutions=[simple, multi_context, reasoning])
 
-testset.to_pandas().to_json("ragas_testset.1008.json", force_ascii=False, indent=4)
+# generate testset
+testset = generator.generate(test_size=1, distributions=distributions, with_debugging_logs=True)
+
+testset.to_pandas().to_json("ragas_testset.1010.json", force_ascii=False, indent=4)
