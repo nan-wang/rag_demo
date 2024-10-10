@@ -7,10 +7,23 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 dotenv.load_dotenv()
 
-docs = load_documents("data/2024年夏季奥林匹克运动会.txt")
-documents = get_chunks(docs)
-for d in documents:
-    d.metadata['filename'] = d.metadata['source']
+vector_db_dir = '../data_chroma'
+collection_name = 'test_db'
+
+from langchain_chroma import Chroma
+from pathlib import Path
+if Path(vector_db_dir).exists():
+    vectorstore = Chroma(
+        persist_directory=vector_db_dir,
+        embedding_function=OpenAIEmbeddings(),
+        create_collection_if_not_exists=False,
+        collection_name=collection_name)
+    print(f"Loaded {vectorstore._chroma_collection.count()} documents")
+from langchain_core.documents import Document
+documents = []
+for id in vectorstore.get()["ids"]:
+    doc = vectorstore.get(id)
+    documents.append(Document(page_content=doc["documents"][0], metadata=doc["metadatas"][0], id=doc["ids"][0]))
 
 
 # generator with openai models
@@ -24,7 +37,13 @@ generator = TestsetGenerator.from_langchain(
     embeddings
 )
 
-# generate testset
-testset = generator.generate_with_langchain_docs(documents, test_size=10, distributions={multi_context: 1.}, with_debugging_logs=True)
+distributions = {
+    simple: 0.5,
+    multi_context: 0.4,
+    reasoning: 0.1
+}
 
-testset.to_pandas().to_json("ragas_testset.json", force_ascii=False, indent=4)
+# generate testset
+testset = generator.generate_with_langchain_docs(documents, test_size=20, distributions=distributions)
+
+testset.to_pandas().to_json("ragas_testset.1008.json", force_ascii=False, indent=4)

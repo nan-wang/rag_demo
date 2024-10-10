@@ -47,7 +47,7 @@ class QAPair(BaseModel):
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06").with_structured_output(QAPair)
 
-vectorstore = Chroma(persist_directory='data_chroma', collection_name='test_db')
+vectorstore = Chroma(persist_directory='../data_chroma_multi', collection_name='test_db')
 
 ids = vectorstore.get()['ids']
 
@@ -73,7 +73,7 @@ for doc in selected_docs:
     doc["answer"] = result.answer
     results.append(doc)
 
-output_path = "data_eval/qa_pairs.json"
+output_path = "data_eval/qa_pairs.v20241009.json"
 
 Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 with open(output_path, "w") as f:
