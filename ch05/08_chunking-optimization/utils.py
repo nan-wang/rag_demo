@@ -95,7 +95,7 @@ def split_sections(content, skip_empty_sections=True, root_title=""):
             "section_index": section_counters[level]
         }
 
-        if title in ["注释", "参见", "参考文献", "外部链接", "奖牌榜", "比赛日程", "参考"]:
+        if title in ["注释", "参见", "参考文献", "外部链接", "奖牌榜", "比赛日程", "参考", "外部连结"]:
             continue
         sections[level].append(section_info)
 
