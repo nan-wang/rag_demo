@@ -1,17 +1,21 @@
 import dotenv
 # pip install nest_asyncio
 import nest_asyncio
-from ragas.run_config import RunConfig
-
 nest_asyncio.apply()
+from ragas.embeddings.base import LangchainEmbeddingsWrapper
+from ragas.llms import LangchainLLMWrapper
+from ragas.run_config import RunConfig
+from ragas.testset.docstore import InMemoryDocumentStore
+from ragas.testset.extractor import KeyphraseExtractor
 from ragas.testset.generator import TestsetGenerator
-from ragas.testset.evolutions import simple, multi_context, reasoning, conditional
+from ragas.testset.evolutions import simple, multi_context, reasoning
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 dotenv.load_dotenv()
 
 vector_db_dir = '../data_chroma_multi'
 collection_name = 'test_db'
+num_docs = 10
 
 from langchain_chroma import Chroma
 from pathlib import Path
@@ -29,7 +33,7 @@ import random
 documents = []
 ids = vectorstore.get()['ids']
 random.shuffle(ids)
-for id in ids[:10]:
+for id in ids[:num_docs*2]:
     doc = vectorstore.get(id)
     if not doc["metadatas"][0]["is_leaf"]:
         continue
@@ -39,13 +43,6 @@ for id in ids[:10]:
 generator_llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 critic_llm = ChatOpenAI(model="gpt-4o-2024-08-06")
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-
-from ragas.llms import LangchainLLMWrapper
-from ragas.testset.extractor import KeyphraseExtractor
-from ragas.testset.docstore import InMemoryDocumentStore
-from ragas.embeddings.base import (
-    LangchainEmbeddingsWrapper,
-)
 
 generator_llm_model = LangchainLLMWrapper(generator_llm)
 critic_llm_model = LangchainLLMWrapper(critic_llm)
@@ -81,13 +78,13 @@ generator = TestsetGenerator.from_langchain(
 )
 
 distributions = {
-    multi_context: 1.0,
+    simple: 1.0,
 }
 
 generator.adapt(language="chinese", evolutions=[simple, reasoning, multi_context])
 # generator.save(evolutions=[simple, multi_context, reasoning])
 
 # generate testset
-testset = generator.generate(test_size=1, distributions=distributions, with_debugging_logs=True)
+testset = generator.generate(test_size=num_docs, distributions=distributions, with_debugging_logs=True)
 
-testset.to_pandas().to_json("ragas_testset.1010.json", force_ascii=False, indent=4)
+testset.to_pandas().to_json("ragas_testset.1011.part3.json", force_ascii=False, indent=4)

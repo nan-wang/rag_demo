@@ -21,12 +21,14 @@ dotenv.load_dotenv()
 
 # load the test data
 examples = []
-with open("data_eval/qa_pairs.v20241009.json", "r") as f:
+with open("data_eval/qa_pairs.v20241011.ragas.json", "r") as f:
     qa_pairs = json.load(f)
     for qa_pair in qa_pairs:
         query = qa_pair["question"]
-        ground_truth = qa_pair["answer"]
-        source_documents = qa_pair["documents"]
+        # ground_truth = qa_pair["answer"]
+        ground_truth = qa_pair["ground_truth"]
+        # source_documents = qa_pair["documents"]
+        source_documents = qa_pair["contexts"][0]
         examples.append(
             {
                 "query": query,

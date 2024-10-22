@@ -22,12 +22,14 @@ dotenv.load_dotenv()
 
 # load the test data
 examples = []
-with open("data_eval/qa_pairs.v20241009.json", "r") as f:
+with open("ragas_testset.1011.json", "r") as f:
     qa_pairs = json.load(f)
     for qa_pair in qa_pairs:
         query = qa_pair["question"]
-        ground_truth = qa_pair["answer"]
-        source_documents = qa_pair["documents"]
+        # ground_truth = qa_pair["answer"]
+        ground_truth = qa_pair["ground_truth"]
+        # source_documents = qa_pair["documents"]
+        source_documents = qa_pair["contexts"][0]
         examples.append(
             {
                 "query": query,
@@ -114,9 +116,9 @@ result = evaluate(
 
 eval_df = result.to_pandas()
 
-eval_df.to_json("eval_results.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
+eval_df.to_json("eval_results.ragas.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
 
 mask = ((eval_df["answer_relevancy"] < 0.5) | (eval_df["context_precision"] < 0.1))
 wrong_answers = eval_df[mask]
 
-wrong_answers.to_json("wrong_answers.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
+wrong_answers.to_json("wrong_answers.ragas.multi.v20241011.json", orient="records", indent=4, force_ascii=False)
