@@ -175,3 +175,4 @@ toy*.*
 */*/.DS_Store
 .DS_Store
 */*/*.db
+ch05/03_eval/chinese/*
