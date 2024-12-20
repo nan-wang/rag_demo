@@ -27,12 +27,9 @@ class QAPair(BaseModel):
 
 llm = ChatOpenAI(model="gpt-4o-2024-08-06").with_structured_output(QAPair)
 
-chain = (
-        prompt
-        | llm
-)
+chain = (prompt | llm)
 
-input_path = "data_eval/qa_pairs.v20241219.json"
+input_path = "data_eval/qa_pairs.v20241219.validate.json"
 # load the json file at input_path
 import json
 with open(input_path, 'r') as f:
@@ -41,6 +38,8 @@ with open(input_path, 'r') as f:
 results = []
 from tqdm import tqdm
 for doc in tqdm(data):
+    if doc["metadatas"]["verdict"] == 0:
+        continue
     original_question = doc['query']
     original_answer = doc['ground_truth']['content']
     result = chain.invoke({
