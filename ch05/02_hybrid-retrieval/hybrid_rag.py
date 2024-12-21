@@ -36,7 +36,7 @@ def get_all_splits():
     return text_splitter.split_documents(docs)
 
 
-vector_db_dir = '../data_chroma'
+vector_db_dir = '../data_chroma_multi_with_metadata'
 collection_name = 'test_db'
 if Path(vector_db_dir).exists():
     vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(),
@@ -84,12 +84,16 @@ retriever = EnsembleRetriever(retrievers=[vector_retriever, bm25_retriever], wei
 #
 # sys.exit(0)
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
+llm = ChatOpenAI(model="gpt-4o-mini")
 prompt = hub.pull("rlm/rag-prompt")
 
 
 def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
+    output_list = []
+    for idx, doc in enumerate(docs):
+        doc_str = doc.page_content.replace("\n", " ")
+        output_list.append(f"[doc_{idx+1}]{doc_str}")
+    return "\n\n".join(output_list)
 
 
 rag_chain = (
@@ -104,5 +108,3 @@ query = "中国在奥运会上有哪些重要历史时刻?"
 
 result = rag_chain.invoke(query)
 print(result)
-
-# 中国在奥运会的历史上有几个重要时刻。1984年洛杉矶奥运会上，许海峰为中国赢得了第一枚奥运金牌，实现了零的突破。2008年北京奥运会上，中国以51枚金牌首次登上金牌榜首，进一步确立了其体育强国地位。
