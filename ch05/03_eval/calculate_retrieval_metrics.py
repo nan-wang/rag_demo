@@ -31,11 +31,11 @@ dotenv.load_dotenv()
 )
 @click.option(
     '--precision/--no-precision',
-    default=True
+    default=False
 )
 @click.option(
     '--recall/--no-recall',
-    default=True
+    default=False
 )
 @click.argument(
     'input_fn',
