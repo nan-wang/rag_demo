@@ -46,7 +46,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
         docs = json.load(f)
         cxt_precision_kp = []
         cxt_recall_kp = []
-        for doc in docs[:2]:
+        for doc in docs[:num_docs]:
             question = doc["query"]
             context = doc["response"]["contexts"][0]
             for k in doc["ground_truth"]["keypoints"]:
