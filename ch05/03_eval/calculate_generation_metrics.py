@@ -24,7 +24,8 @@ with open("data_eval/results.naive_rag.v20241219.keypoints.json", "r") as f:
     docs = json.load(f)
     response_loyalty_kp = []
     response_hallucination_kp = []
-    for doc in docs[:1]:
+    response_noise_sensitivity_kp = []
+    for doc in docs[:2]:
         question = doc["query"]
         answer = doc["ground_truth"]["content"]
         response = doc["response"]["content"]
@@ -33,6 +34,14 @@ with open("data_eval/results.naive_rag.v20241219.keypoints.json", "r") as f:
             response_loyalty_kp.append(
                 KeyPoint(question=question, answer=context, keypoint=k))
             response_hallucination_kp.append(
+                (
+                    KeyPoint(
+                        question=question, answer=context, keypoint=k),
+                    KeyPoint(
+                        question=question, answer=answer, keypoint=k)
+                )
+            )
+            response_noise_sensitivity_kp.append(
                 (
                     KeyPoint(
                         question=question, answer=context, keypoint=k),
@@ -55,13 +64,14 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 match = re.compile(r'\[\[\[([^\]]+)\]\]\]')
 
 chain = (prompt | llm | StrOutputParser())
 
 cal_loyalty = False
 cal_hallucination = True
+cal_noise_sensitivity = False
 
 if cal_loyalty:
     response_loyalty_list = []
@@ -106,10 +116,50 @@ if cal_hallucination:
                 print(f"Failed to extract the label for the keypoint: {result}")
         result_list.append((kp_group, label))
 
-    output_path = "data_eval/results.naive_rag.v20241219.metrics.hallucination.toy.json"
+    output_path = "data_eval/results.naive_rag.v20241219.metrics.hallucination.json"
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in result_list], f, indent=4, ensure_ascii=False)
     hallucination_kp = sum([label for kp_group, label in result_list])
     hallucination_score = hallucination_kp/len(result_list)
     print(f"hallucination score: {hallucination_score}")
+
+if cal_noise_sensitivity:
+    result_list = []
+    for claim_context, claim_ans in tqdm(response_noise_sensitivity_kp):
+        label = False
+        # check if the keypoint is supported by the context
+        result = chain.invoke({
+            "question": claim_context.question,
+            "answer": claim_context.answer,
+            "keypoint": claim_context.keypoint
+        })
+        rsp = match.search(result)
+        if rsp:
+            claim_context.label = rsp.group(1)
+            if claim_context.label == "Relevant":
+                label = True
+        else:
+            print(f"Failed to extract the label for the keypoint: {result}")
+        # check if the keypoint is supported by the answer
+        result = chain.invoke({
+            "question": claim_ans.question,
+            "answer": claim_ans.answer,
+            "keypoint": claim_ans.keypoint
+        })
+        rsp = match.search(result)
+        if rsp:
+            claim_ans.label = rsp.group(1)
+            if claim_ans.label == "Relevant":
+                label = False
+        else:
+            print(f"Failed to extract the label for the keypoint: {result}")
+        result_list.append(((claim_context, claim_ans), label))
+
+    output_path = "data_eval/results.naive_rag.v20241219.metrics.noise_sensitivity.json"
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, 'w') as f:
+        json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in result_list], f, indent=4, ensure_ascii=False)
+    noise_sensitivity_kp = sum([label for kp_group, label in result_list])
+    noise_sensitivity_score = noise_sensitivity_kp/len(result_list)
+    print(f"noise sensitivity score: {noise_sensitivity_score}")
