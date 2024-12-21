@@ -4,40 +4,16 @@ import click
 from tqdm import tqdm
 from pathlib import Path
 import dotenv
-import re
-from utils import dump_metrics
+from utils import dump_metrics, verify_keypoints
+from data_models import KeyPoint
 
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
-from langchain_core.pydantic_v1 import BaseModel, Field
 from keypoints_verify_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_core.output_parsers import StrOutputParser
 
 
 dotenv.load_dotenv()
-class KeyPoint(BaseModel):
-    question: str = Field(..., description="The question.")
-    answer: str = Field(..., description="The answer.")
-    keypoint: str = Field(..., description="The keypoint related to the question which should be covered by the answer")
-    label: str = Field("Relevant", description="The label indicating whether the answer covers the keypoint.")
-
-
-def verify_keypoints(keypoints, lc_chain):
-    match = re.compile(r'\[\[\[([^\]]+)\]\]\]')
-    results = []
-    for kp in tqdm(keypoints):
-        result = lc_chain.invoke({
-            "question": kp.question,
-            "answer": kp.answer,
-            "keypoint": kp.keypoint
-        })
-        rsp = match.search(result)
-        if rsp:
-            kp.label = rsp.group(1)
-        else:
-            print(f"Failed to extract the label for the keypoint: {result}")
-        results.append(kp)
-    return results
 
 
 @click.command()

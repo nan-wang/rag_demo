@@ -1,4 +1,5 @@
 import re
+from tqdm import tqdm
 import copy
 from pathlib import Path
 import glob
@@ -115,3 +116,22 @@ def dump_metrics(results, output_fn):
     Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
     with open(output_fn, 'w') as f:
         json.dump([kp.dict() for kp in results], f, indent=4, ensure_ascii=False)
+    print(f"Dumping the results to {output_fn}")
+
+
+def verify_keypoints(keypoints, lc_chain):
+    match = re.compile(r'\[\[\[([^\]]+)\]\]\]')
+    results = []
+    for kp in tqdm(keypoints):
+        result = lc_chain.invoke({
+            "question": kp.question,
+            "answer": kp.answer,
+            "keypoint": kp.keypoint
+        })
+        rsp = match.search(result)
+        if rsp:
+            kp.label = rsp.group(1)
+        else:
+            print(f"Failed to extract the label for the keypoint: {result}")
+        results.append(kp)
+    return results
