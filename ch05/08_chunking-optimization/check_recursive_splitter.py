@@ -9,7 +9,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 
-docs = TextLoader("../data/2024年夏季奥林匹克运动会.txt").load()
+docs = TextLoader("../data/1992年冬季奥林匹克运动会.txt").load()
 all_splits = text_splitter.split_documents(docs)
 
 print(f"Split the documents into {len(all_splits)} chunks")
