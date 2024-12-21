@@ -106,7 +106,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
             Path(output_path) / "metrics" / "global_precision.json")
         supported_kp = sum([1 for kp in precision_list if kp.label == "Relevant"])
         precision_score = supported_kp / len(precision_list)
-        print(f"precision: {precision_score}")
+        print(f"precision: {precision_score:.3f}")
 
     if recall:
         recall_list = verify_keypoints(ans_kp, chain)
@@ -115,11 +115,11 @@ def main(num_docs, output_path, precision, recall, input_fn):
             Path(output_path) / "metrics" / "global_recall.json")
         supported_kp = sum([1 for kp in recall_list if kp.label == "Relevant"])
         recall_score = supported_kp / len(recall_list)
-        print(f"recall: {recall_score:.2f}")
+        print(f"recall: {recall_score:.3f}")
 
     if precision and recall:
         f1 = 2 * precision_score * recall_score / (precision_score + recall_score)
-        print(f"f1: {f1:.2f}")
+        print(f"f1: {f1:.3f}")
 
 
 if __name__ == '__main__':
