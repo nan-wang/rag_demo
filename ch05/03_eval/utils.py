@@ -2,6 +2,7 @@ import re
 import copy
 from pathlib import Path
 import glob
+import json
 
 
 from langchain_community.document_loaders import TextLoader
@@ -108,3 +109,9 @@ def split_contexts(contexts):
     pattern = r'(?=article_title:)'
     # Split the text using the regex pattern
     return [part.strip() for part in re.split(pattern, contexts) if part.strip()]
+
+
+def dump_metrics(results, output_fn):
+    Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_fn, 'w') as f:
+        json.dump([kp.dict() for kp in results], f, indent=4, ensure_ascii=False)

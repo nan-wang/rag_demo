@@ -1,8 +1,11 @@
 import json
+import click
+
 from tqdm import tqdm
 from pathlib import Path
 import dotenv
 import re
+from utils import dump_metrics
 
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
@@ -19,93 +22,107 @@ class KeyPoint(BaseModel):
     label: str = Field("Relevant", description="The label indicating whether the answer covers the keypoint.")
 
 
-# load the data from the file, data_eval/qa_pairs.v20241009.keypoints.json
-with open("data_eval/results.naive_rag.v20241219.keypoints.json", "r") as f:
-    docs = json.load(f)
-    rsp_kp = []
-    ans_kp = []
-    for doc in docs[:2]:
-        question = doc["query"]
-        answer = doc["ground_truth"]["content"]
-        response = doc["response"]["content"]
-        context = doc["response"]["contexts"][0]
-        for k in doc["response"]["keypoints"]:
-            rsp_kp.append(
-                KeyPoint(question=question, answer=answer, keypoint=k))
-        for k in doc["ground_truth"]["keypoints"]:
-            ans_kp.append(
-                KeyPoint(question=question, answer=response, keypoint=k))
+def verify_keypoints(keypoints, lc_chain):
+    match = re.compile(r'\[\[\[([^\]]+)\]\]\]')
+    results = []
+    for kp in tqdm(keypoints):
+        result = lc_chain.invoke({
+            "question": kp.question,
+            "answer": kp.answer,
+            "keypoint": kp.keypoint
+        })
+        rsp = match.search(result)
+        if rsp:
+            kp.label = rsp.group(1)
+        else:
+            print(f"Failed to extract the label for the keypoint: {result}")
+        results.append(kp)
+    return results
 
-KV_SYS_TMPL = (
-    SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
-KV_USER_TMPL = (
-    HumanMessagePromptTemplate.from_template(USER_PROMPT))
-
-prompt = ChatPromptTemplate.from_messages(
-    messages=[
-        KV_SYS_TMPL,
-        KV_USER_TMPL
-    ]
+@click.command()
+@click.option(
+    '--num_docs',
+    '-n',
+    default=-1,
+    help='The number of documents to be processed.')
+@click.option(
+    '--output_path',
+    '-o',
+    default="./metrics",
+    help='The output file path.',
+    type=click.Path(file_okay=False, dir_okay=True, writable=True)
 )
+@click.option(
+    '--precision/--no-precision',
+    default=True
+)
+@click.option(
+    '--recall/--no-recall',
+    default=True
+)
+@click.argument(
+    'input_fn',
+    default="keypoints.json")
+def main(num_docs, output_path, precision, recall, input_fn):
+    # load the data from the file, data_eval/qa_pairs.v20241009.keypoints.json
+    with open(input_fn, "r") as f:
+        docs = json.load(f)
+        rsp_kp = []
+        ans_kp = []
+        for doc in docs[:num_docs]:
+            question = doc["query"]
+            answer = doc["ground_truth"]["content"]
+            response = doc["response"]["content"]
+            for k in doc["response"]["keypoints"]:
+                rsp_kp.append(
+                    KeyPoint(question=question, answer=answer, keypoint=k))
+            for k in doc["ground_truth"]["keypoints"]:
+                ans_kp.append(
+                    KeyPoint(question=question, answer=response, keypoint=k))
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
-match = re.compile(r'\[\[\[([^\]]+)\]\]\]')
+    KV_SYS_TMPL = (
+        SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
-chain = (prompt | llm | StrOutputParser())
+    KV_USER_TMPL = (
+        HumanMessagePromptTemplate.from_template(USER_PROMPT))
 
-cal_precision = False
-cal_recall = False
+    prompt = ChatPromptTemplate.from_messages(
+        messages=[
+            KV_SYS_TMPL,
+            KV_USER_TMPL
+        ]
+    )
 
-# calculate the precision
-if cal_precision:
-    precision_list = []
+    llm = ChatOpenAI(model="gpt-4o-mini")
 
-    for kp in tqdm(rsp_kp):
-        result = chain.invoke({
-            "question": kp.question,
-            "answer": kp.answer,
-            "keypoint": kp.keypoint
-        })
-        rsp = match.search(result)
-        if rsp:
-            kp.label = rsp.group(1)
-        else:
-            print(f"Failed to extract the label for the keypoint: {result}")
-        precision_list.append(kp)
+    chain = (prompt | llm | StrOutputParser())
 
-    output_path = "data_eval/results.naive_rag.v20241219.keypoints.precision.json"
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump([kp.dict() for kp in precision_list], f, indent=4, ensure_ascii=False)
-    supported_kp = sum([1 for kp in precision_list if kp.label == "Relevant"])
-    precision = supported_kp/len(precision_list)
-    print(f"precision: {precision}")
+    # calculate the precision
+    if precision:
+        precision_list = verify_keypoints(rsp_kp, chain)
+        dump_metrics(
+            precision_list,
+            Path(output_path) / "metrics" / "global_precision.json")
+        supported_kp = sum([1 for kp in precision_list if kp.label == "Relevant"])
+        precision_score = supported_kp / len(precision_list)
+        print(f"precision: {precision_score}")
 
-if cal_recall:
-    recall_list = []
+    if recall:
+        recall_list = verify_keypoints(ans_kp, chain)
+        dump_metrics(
+            recall_list,
+            Path(output_path) / "metrics" / "global_recall.json")
+        supported_kp = sum([1 for kp in recall_list if kp.label == "Relevant"])
+        recall_score = supported_kp / len(recall_list)
+        print(f"recall: {recall_score:.2f}")
 
-    for kp in tqdm(ans_kp):
-        result = chain.invoke({
-            "question": kp.question,
-            "answer": kp.answer,
-            "keypoint": kp.keypoint
-        })
-        rsp = match.search(result)
-        if rsp:
-            kp.label = rsp.group(1)
-        else:
-            print(f"Failed to extract the label for the keypoint: {result}")
-        recall_list.append(kp)
+    if precision and recall:
+        f1 = 2 * precision_score * recall_score / (precision_score + recall_score)
+        print(f"f1: {f1:.2f}")
 
-    output_path = "data_eval/results.naive_rag.v20241219.keypoints.recall.json"
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump([kp.dict() for kp in recall_list], f, indent=4, ensure_ascii=False)
-    supported_kp = sum([1 for kp in recall_list if kp.label == "Relevant"])
-    recall = supported_kp/len(recall_list)
-    print(f"recall: {recall}")
 
-if cal_precision and cal_recall:
-    f1 = 2 * precision * recall / (precision + recall)
-    print(f"f1: {f1}")
+if __name__ == '__main__':
+    main()
+
+
