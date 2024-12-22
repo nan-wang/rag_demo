@@ -29,8 +29,6 @@ print(f"Loaded {vectorstore._chroma_collection.count()} documents")
 
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-retrieved_docs = retriever.invoke("奥运会金牌的挂带有哪些设计?")
-
 llm = ChatOpenAI(model="gpt-4o-mini")
 xlm_template = """
 You're a helpful AI assistant. Given a user question and some Wikipedia article snippets, \
