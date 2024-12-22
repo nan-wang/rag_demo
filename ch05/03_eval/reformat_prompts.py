@@ -1,6 +1,5 @@
 import json
 
-
 def load_and_reformat_json(input_filepath, output_filepath):
     """
     Loads a JSON file, reformats it with UTF-8 encoding, and writes it to a new file.

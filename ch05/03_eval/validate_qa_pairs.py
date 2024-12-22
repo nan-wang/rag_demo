@@ -1,5 +1,5 @@
 import dotenv
-from validate_question_answer import SYSTEM_PROMPT, USER_PROMPT
+from validate_question_answer_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from pathlib import Path

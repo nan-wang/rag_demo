@@ -10,7 +10,7 @@ from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessageProm
 from keypoints_verify_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_core.output_parsers import StrOutputParser
 
-from data_models import KeyPoint
+from datamodels import KeyPoint
 from utils import dump_metrics, verify_keypoints
 
 

@@ -5,7 +5,7 @@ from tqdm import tqdm
 from pathlib import Path
 import dotenv
 from utils import dump_metrics, verify_keypoints
-from data_models import KeyPoint
+from datamodels import KeyPoint
 
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
