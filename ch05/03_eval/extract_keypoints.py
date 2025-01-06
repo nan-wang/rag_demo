@@ -27,7 +27,7 @@ prompt = ChatPromptTemplate.from_messages(
 class KeyPoints(BaseModel):
     keypoints: list = Field(..., description="The keypoints extracted from the context.")
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06").with_structured_output(KeyPoints)
+llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(KeyPoints)
 
 chain = (prompt | llm)
 
