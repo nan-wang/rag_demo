@@ -154,7 +154,7 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
         output_fn = Path(output_path) / "metrics" / "generation_hallucination.json"
         Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
         with open(output_fn, 'w') as f:
-            json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in result_list], f, indent=4, ensure_ascii=False)
+            json.dump([{"details": [kp.dict() for kp in kp_g], "is_hallucination": l} for kp_g, l in result_list], f, indent=4, ensure_ascii=False)
         hallucination_kp = sum([label for kp_group, label in result_list])
         hallucination_score = hallucination_kp/len(result_list)
         print(f"hallucination score ↓: {hallucination_score:.3f}")
