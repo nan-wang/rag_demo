@@ -81,6 +81,7 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
                             question=question, answer=answer, keypoint=k)
                     )
                 )
+            for k in doc["ground_truth"]["keypoints"]:
                 response_context_utility_ratio_kp.append(
                     (
                         KeyPoint(
@@ -209,7 +210,7 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
         for claim_context, claim_ans in tqdm(response_context_utility_ratio_kp):
             # label used for calculating
             supported_by_cxt = True
-            supported_by_ans = False
+            supported_by_cxt_and_ans = False
             # check if the keypoint is supported by the context
             result = chain.invoke({
                 "question": claim_context.question,
@@ -222,7 +223,7 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
                 if claim_context.label != "Relevant":
                     supported_by_cxt = False
                 elif claim_context.label == "Relevant":
-                    supported_by_ans = True
+                    supported_by_cxt_and_ans = True
             else:
                 print(f"Failed to extract the label for the keypoint: {result}")
             # check if the keypoint is supported by the answer
@@ -235,10 +236,10 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
             if rsp:
                 claim_ans.label = rsp.group(1)
                 if claim_ans.label != "Relevant":
-                    supported_by_cxt = False
+                    supported_by_cxt_and_ans = False
             else:
                 print(f"Failed to extract the label for the keypoint: {result}")
-            result_list.append(((claim_context, claim_ans), supported_by_cxt, supported_by_ans))
+            result_list.append(((claim_context, claim_ans), supported_by_cxt, supported_by_cxt_and_ans))
 
         output_fn = Path(output_path) / "metrics" / "generation_context_utility_ratio.json"
         Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
@@ -246,13 +247,13 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
             json.dump([{
                 "claim_cxt": kp_cxt.dict(),
                 "claim_ans": kp_ans.dict(),
-                "supported_by_cxt_ans": l_cxt,
-                "supported_by_ans": l_ans
+                "supported_by_cxt": l_cxt,
+                "supported_by_cxt_and_ans": l_ans
             } for (kp_cxt, kp_ans), l_cxt, l_ans in result_list], f, indent=4, ensure_ascii=False)
-        context_utility_ratio_num = sum([label_num for kp_group, label_num, _ in result_list])
-        context_utility_ratio_den = sum([label_den for kp_group, _, label_den in result_list])
+        context_utility_ratio_den = sum([l_cxt for (_, _), l_cxt, _ in result_list])
+        context_utility_ratio_num = sum([l_ans for (_, _), _, l_ans in result_list])
         context_utility_ratio_score = context_utility_ratio_num / context_utility_ratio_den if context_utility_ratio_den else 0
-        print(f"context utility ratio score ↑: {context_utility_ratio_score:.3f}")
+        print(f"context utility ratio score ↑: {context_utility_ratio_score:.3f} ({context_utility_ratio_num}/{context_utility_ratio_den})")
 
 
 if __name__ == '__main__':
