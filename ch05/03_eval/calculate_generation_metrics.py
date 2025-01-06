@@ -194,10 +194,15 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
         output_fn = Path(output_path) / "metrics" / "generation_noise_sensitivity.json"
         Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
         with open(output_fn, 'w') as f:
-            json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in result_list], f, indent=4, ensure_ascii=False)
+            json.dump([
+                {
+                    "details": [kp.dict() for kp in kp_g],
+                    "is_noise": l
+                } for kp_g, l in result_list
+            ], f, indent=4, ensure_ascii=False)
         noise_sensitivity_kp = sum([label for kp_group, label in result_list])
         noise_sensitivity_score = noise_sensitivity_kp/len(result_list)
-        print(f"noise sensitivity score ↓: {noise_sensitivity_score:.3f}")
+        print(f"noise sensitivity score ↓: {noise_sensitivity_score:.3f} ({noise_sensitivity_kp}/{len(result_list)})")
 
     if context_utility_ratio:
         result_list = []
