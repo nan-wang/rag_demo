@@ -100,7 +100,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
                     print(f"Failed to extract the label for the keypoint: {result}")
             context_precision_list.append((kp_group, label))
 
-        output_fn = Path(output_path) / "metric" / "retrieval_context_precision.json"
+        output_fn = Path(output_path) / "metrics" / "retrieval_context_precision.json"
         Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
         with open(output_fn, 'w') as f:
             json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in context_precision_list], f, indent=4, ensure_ascii=False)
