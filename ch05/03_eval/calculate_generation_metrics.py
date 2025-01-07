@@ -57,7 +57,7 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
         response_hallucination_kp = []
         response_noise_sensitivity_kp = []
         response_context_utility_ratio_kp = []
-        for doc in docs[:5]:
+        for doc in docs[:num_docs]:
             question = doc["query"]
             answer = doc["ground_truth"]["content"]
             response = doc["response"]["content"]
@@ -257,5 +257,5 @@ def main(num_docs, output_path, loyalty, hallucination, noise_sensitivity, conte
 
 
 if __name__ == '__main__':
-    # python calculate_generation_metrics.py -n 10 -o data_metrics/v20241219/toy --loyalty --hallucination --noise-sensitivity --context-utility-ratio data_metrics/v20241219/ch0503_naive/keypoints.json
+    # python calculate_generation_metrics.py -n 100 -o data_metrics/v20241219/ch0503_naive --loyalty --hallucination --noise-sensitivity --context-utility-ratio data_metrics/v20241219/ch0503_naive/keypoints.json
     main()
