@@ -41,7 +41,6 @@ dotenv.load_dotenv()
     'input_fn',
     default="keypoints.json")
 def main(num_docs, output_path, precision, recall, input_fn):
-    # load the data from the file, data_eval/qa_pairs.v20241009.keypoints.json
     with open(input_fn, "r") as f:
         docs = json.load(f)
         rsp_kp = []
@@ -99,7 +98,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
 
 
 if __name__ == '__main__':
-    # python calculate_global_metrics.py -n 100 -o data_metrics/v20241219/ch0503_naive/metrics --precision --recall data_metrics/v20241219/ch0503_naive/keypoints.json
+    # python calculate_global_metrics.py -n 100 -o data_metrics/v20241219/ch0503_naive/ --precision --recall data_metrics/v20241219/ch0503_naive/keypoints.json
     main()
 
 

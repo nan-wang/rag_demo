@@ -1,3 +1,4 @@
+import click
 import dotenv
 import tqdm
 import json
@@ -6,54 +7,78 @@ from keypoints_extract_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pathlib import Path
-from langchain_core.pydantic_v1 import BaseModel, Field
+from datamodels import KeyPoints
 
 
 dotenv.load_dotenv()
 
-KE_SYS_TMPL = (
-    SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
-KE_USER_TMPL = (
-    HumanMessagePromptTemplate.from_template(USER_PROMPT))
-
-prompt = ChatPromptTemplate.from_messages(
-    messages=[
-        KE_SYS_TMPL,
-        KE_USER_TMPL
-    ]
+@click.command()
+@click.option(
+    '--num_docs',
+    '-n',
+    default=-1,
+    help='The number of documents to be processed.')
+@click.option(
+    '--output_path',
+    '-o',
+    default="./metrics",
+    help='The output file path.',
+    type=click.Path(file_okay=False, dir_okay=True, writable=True)
 )
+@click.argument(
+    'input_fn',
+    default="response.json"
+)
+def main(num_docs, output_path, input_fn):
+    KE_SYS_TMPL = (
+        SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
-class KeyPoints(BaseModel):
-    keypoints: list = Field(..., description="The keypoints extracted from the context.")
+    KE_USER_TMPL = (
+        HumanMessagePromptTemplate.from_template(USER_PROMPT))
 
-llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(KeyPoints)
+    prompt = ChatPromptTemplate.from_messages(
+        messages=[
+            KE_SYS_TMPL,
+            KE_USER_TMPL
+        ]
+    )
 
-chain = (prompt | llm)
+    llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(KeyPoints)
 
-input_path = "data_eval/results.v20241219.naive_rag.json"
-with open(input_path, 'r') as f:
-    data = json.load(f)
+    chain = (prompt | llm)
 
-results = []
-for doc in tqdm.tqdm(data):
-    question = doc['query']
-    answer = doc['ground_truth']['content']
-    result = chain.invoke({
-        "question": question,
-        "answer": answer
-    })
-    doc["ground_truth"]["keypoints"] = result.keypoints
+    # input_path = "data_eval/results.v20241219.naive_rag.json"
+    with open(input_fn, 'r') as f:
+        data = json.load(f)
+    print(f"Loaded from {input_fn}")
 
-    response = doc['response']['content']
-    result = chain.invoke({
-        "question": question,
-        "answer": response
-    })
-    doc["response"]["keypoints"] = result.keypoints
-    results.append(doc)
+    results = []
+    print(f"Selected {num_docs if num_docs!=-1 else len(data)} from {len(data)} documents")
+    for doc in tqdm.tqdm(data[:num_docs]):
+        question = doc['query']
+        answer = doc['ground_truth']['content']
+        result = chain.invoke({
+            "question": question,
+            "answer": answer
+        })
+        doc["ground_truth"]["keypoints"] = result.keypoints
 
-output_path = "data_eval/results.naive_rag.v20241219.keypoints.json"
-Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-with open(output_path, 'w') as f:
-    json.dump(results, f, indent=4, ensure_ascii=False)
+        response = doc['response']['content']
+        result = chain.invoke({
+            "question": question,
+            "answer": response
+        })
+        doc["response"]["keypoints"] = result.keypoints
+        results.append(doc)
+
+    output_fn = Path(output_path) / "keypoints.json"
+    Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_fn, 'w') as f:
+        json.dump(results, f, indent=4, ensure_ascii=False)
+    print(f"Saved the results to {output_fn}")
+
+
+if __name__ == "__main__":
+    # python extract_keypoints.py -n 10 -o data_metrics/v20241219/toy data_metrics/v20241219/ch0503_naive/response.json
+    main()
