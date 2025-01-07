@@ -309,3 +309,5 @@ def convert_chunks_to_documents(chunks, add_year=False, add_season=False):
         if add_season:
             metadata["season"] = chunk["season"]
         yield Document(page_content="\n".join(content), metadata=metadata)
+
+
