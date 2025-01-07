@@ -106,7 +106,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
             json.dump([([kp.dict() for kp in kp_g], l) for kp_g, l in context_precision_list], f, indent=4, ensure_ascii=False)
         supported_kp = sum([label for kp_group, label in context_precision_list])
         precision_score = supported_kp/len(context_precision_list)
-        print(f"context_precision: {precision_score}")
+        print(f"context_precision: {precision_score:.3f}")
 
     if recall:
         context_recall_list = verify_keypoints(cxt_recall_kp, chain)
@@ -115,7 +115,7 @@ def main(num_docs, output_path, precision, recall, input_fn):
         dump_metrics(context_recall_list, output_fn)
         supported_kp = sum([1 for kp in context_recall_list if kp.label == "Relevant"])
         keypoints_recall = supported_kp/len(context_recall_list)
-        print(f"context_recall: {keypoints_recall}")
+        print(f"context_recall: {keypoints_recall:.3f}")
 
 
 if __name__ == '__main__':
