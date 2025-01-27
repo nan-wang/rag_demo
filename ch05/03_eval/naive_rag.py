@@ -31,11 +31,11 @@ vectorstore = Chroma(
 )
 print(f"Loaded {vectorstore._chroma_collection.count()} documents")
 
-retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 10})
 
 retrieved_docs = retriever.invoke("奥运会金牌的挂带有哪些设计?")
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
+llm = ChatOpenAI(model="gpt-4o-mini")
 prompt = ChatPromptTemplate.from_template(
     """You are an assistant for question-answering tasks. 
 Use the following pieces of retrieved context to answer the question. 
@@ -60,7 +60,7 @@ rag_chain = (
 
 results = []
 # open the json file at data_eval/qa_pairs.v20241219.rewrite.json
-with open("data_eval/qa_pairs.v20241219.rewrite.json", "r") as f:
+with open("data_eval/v20241219/qa_pairs_rewrite.json", "r") as f:
     qa_pairs = json.load(f)
     for doc in tqdm(qa_pairs):
         query = doc["query"]
@@ -71,7 +71,7 @@ with open("data_eval/qa_pairs.v20241219.rewrite.json", "r") as f:
         }
         results.append(doc)
 
-output_path = "data_eval/results.v20241219.naive_rag.json"
+output_path = "data_metrics/v20241219/ch0503_naive/response.json"
 
 Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 with open(output_path, "w") as f:
