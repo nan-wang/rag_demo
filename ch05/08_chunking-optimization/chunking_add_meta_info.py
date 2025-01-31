@@ -27,7 +27,7 @@ def format_docs(docs):
     return "\n\n".join(output_list)
 
 
-def split_sections(text):
+def split_sections(text, source=None):
     sections = []
     pattern = r'(==+)(.*?)==+\s*([^=]*)'
 
@@ -50,11 +50,14 @@ def split_sections(text):
             parent_section = sections[-1].metadata["title"]  # The parent section is the last level 1 section
 
         metadata = {
+            "source": source,
             "title": title,
             "parent_section": parent_section,
             "section_level": level,
             "section_index": section_counters[level]
         }
+        if title in ["注释", "参见", "参考文献", "外部链接", "奖牌榜", "比赛日程", "参考"]:
+            continue
         sections.append(Document(page_content=content, metadata=metadata))
     return sections
 
@@ -75,16 +78,17 @@ def split_chunks(docs: Iterable[Document]):
         content = chunk.page_content
         metadata = chunk.metadata
         section_title = metadata["title"]
-        section_title = f"{metadata['parent_section']}_{section_title}"
+        if metadata["parent_section"]:
+            section_title = f"{metadata['parent_section']}_{section_title}"
         content = f"section_title: {section_title}\ncontent: {content}"
-        title = Path(metadata.get("source", "")).name.removesuffix(".txt")
-        content = f"article_title: {title}\n{content}"
+        article_title = Path(metadata.get("source", "")).name.removesuffix(".txt")
+        content = f"article_title: {article_title}\n{content}"
         results.append(Document(page_content=content, metadata=metadata))
 
     return results
 
 
-vector_db_dir = '../data_chroma_add_meta_info'
+vector_db_dir = '../data_chroma_add_meta_info_v1'
 collection_name = 'olympic_games'
 
 if Path(vector_db_dir).exists():
@@ -100,11 +104,10 @@ else:
     chunks = []
     for doc in docs:
         text = doc.page_content
-        title = Path(doc.metadata.get("source", "")).stem
-        sections = split_sections(text)
+        article_title = Path(doc.metadata.get("source", "")).stem
+        sections = split_sections(text, source=article_title)
         _chunks = split_chunks(sections)
         chunks.extend(_chunks)
-    print(f"Split the documents into {len(chunks)} chunks")
     vectorstore = Chroma.from_documents(
         documents=chunks,
         embedding=OpenAIEmbeddings(),
