@@ -25,15 +25,16 @@ def format_docs(docs):
         output_list.append(f"[doc_{idx+1}]{doc_str}")
     return "\n\n".join(output_list)
 
-def split_sections(text):
+def split_sections(doc: Document):
+    text = doc.page_content
     sections = []
     pattern = r'(==+)(.*?)==+\s*([^=]*)'
 
     # This dictionary helps to track the current section level and index
     section_counters = {1: -1, 2: -1, 3: -1}
-    parent_section = ""
     matches = re.finditer(pattern, text, re.DOTALL)
 
+    cur_metadata = doc.metadata.copy()
     for match in matches:
         level = len(match.group(1)) - 1  # Determine the section level by the number of '='
         section_title = match.group(2).strip()
@@ -42,18 +43,10 @@ def split_sections(text):
         # Reset section index for the lower level when we encounter a higher-level section
         if level == 1:
             section_counters[2] = -1
-            parent_section = ""
         section_counters[level] += 1
-        if level == 2:
-            parent_section = sections[-1].metadata["title"]  # The parent section is the last level 1 section
 
-        metadata = {
-            "title": section_title,
-            "parent_section": parent_section,
-            "section_level": level,
-            "section_index": section_counters[level]
-        }
-        sections.append(Document(page_content=content, metadata=metadata))
+        cur_metadata["title"] = section_title
+        sections.append(Document(page_content=content, metadata=cur_metadata))
     return sections
 
 
@@ -62,7 +55,6 @@ def split_chunks(docs):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=512,
         chunk_overlap=128,
-        add_start_index=True,
         separators=['。', '！', '？', '\?', '\n\n', '\n', '\n\n\n'],
         is_separator_regex=True,
         keep_separator="end"
@@ -85,8 +77,7 @@ else:
     print(f"Loaded {len(docs)} documents")
     chunks = []
     for doc in docs:
-        text = doc.page_content
-        sections = split_sections(text)
+        sections = split_sections(doc)
         _chunks = split_chunks(sections)
         chunks.extend(_chunks)
     print(f"Split the documents into {len(chunks)} chunks")
