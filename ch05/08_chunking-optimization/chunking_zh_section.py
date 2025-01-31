@@ -36,7 +36,7 @@ def split_sections(text):
 
     for match in matches:
         level = len(match.group(1)) - 1  # Determine the section level by the number of '='
-        title = match.group(2).strip()
+        section_title = match.group(2).strip()
         content = match.group(3).strip()
 
         # Reset section index for the lower level when we encounter a higher-level section
@@ -48,7 +48,7 @@ def split_sections(text):
             parent_section = sections[-1].metadata["title"]  # The parent section is the last level 1 section
 
         metadata = {
-            "title": title,
+            "title": section_title,
             "parent_section": parent_section,
             "section_level": level,
             "section_index": section_counters[level]
@@ -67,7 +67,6 @@ def split_chunks(docs):
         is_separator_regex=True,
         keep_separator="end"
     )
-
     return text_splitter.split_documents(docs)
 
 
@@ -87,7 +86,6 @@ else:
     chunks = []
     for doc in docs:
         text = doc.page_content
-        title = Path(doc.metadata.get("source", "")).stem
         sections = split_sections(text)
         _chunks = split_chunks(sections)
         chunks.extend(_chunks)
