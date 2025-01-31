@@ -88,7 +88,7 @@ def split_chunks(docs: Iterable[Document]):
     return results
 
 
-vector_db_dir = '../data_chroma_add_meta_info_v1'
+vector_db_dir = '../data_chroma_add_meta_info'
 collection_name = 'olympic_games'
 
 if Path(vector_db_dir).exists():
