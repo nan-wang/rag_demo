@@ -26,11 +26,21 @@ dotenv.load_dotenv()
     help='The output file path.',
     type=click.Path(file_okay=False, dir_okay=True, writable=True)
 )
+@click.option(
+    '--ground-truth/--no-ground-truth',
+    default=False,
+    help='Whether to extract keypoints from ground truth or response.'
+)
+@click.option(
+    '--response/--no-response',
+    default=False,
+    help='Whether to extract keypoints from ground truth or response.'
+)
 @click.argument(
     'input_fn',
     default="response.json"
 )
-def main(num_docs, output_path, input_fn):
+def main(num_docs, output_path, ground_truth, response, input_fn):
     KE_SYS_TMPL = (
         SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
@@ -57,19 +67,21 @@ def main(num_docs, output_path, input_fn):
     print(f"Selected {num_docs if num_docs!=-1 else len(data)} from {len(data)} documents")
     for doc in tqdm.tqdm(data[:num_docs]):
         question = doc['query']
-        answer = doc['ground_truth']['content']
-        result = chain.invoke({
-            "question": question,
-            "answer": answer
-        })
-        doc["ground_truth"]["keypoints"] = result.keypoints
+        if ground_truth:
+            answer = doc['ground_truth']['content']
+            result = chain.invoke({
+                "question": question,
+                "answer": answer
+            })
+            doc["ground_truth"]["keypoints"] = result.keypoints
 
-        response = doc['response']['content']
-        result = chain.invoke({
-            "question": question,
-            "answer": response
-        })
-        doc["response"]["keypoints"] = result.keypoints
+        if response:
+            response = doc['response']['content']
+            result = chain.invoke({
+                "question": question,
+                "answer": response
+            })
+            doc["response"]["keypoints"] = result.keypoints
         results.append(doc)
 
     output_fn = Path(output_path) / "keypoints.json"
@@ -80,5 +92,5 @@ def main(num_docs, output_path, input_fn):
 
 
 if __name__ == "__main__":
-    # python extract_keypoints.py -n 10 -o data_metrics/v20241219/toy data_metrics/v20241219/ch0503_naive/response.json
+    # python extract_keypoints.py -n 10 -g -r -o data_metrics/v20241219/toy data_metrics/v20241219/ch0503_naive/response.json
     main()
