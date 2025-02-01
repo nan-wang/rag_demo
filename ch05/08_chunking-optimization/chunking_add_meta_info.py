@@ -27,13 +27,16 @@ def format_docs(docs):
     return "\n\n".join(output_list)
 
 
-def split_sections(text, source=None):
+def split_sections(text, source=None, skip_empty_sections=False):
     sections = []
     pattern = r'(==+)(.*?)==+\s*([^=]*)'
 
     # This dictionary helps to track the current section level and index
     section_counters = {1: -1, 2: -1, 3: -1}
-    parent_section = ""
+    parent_title = ""
+    prev_level = 0
+    section_title = ["", ]
+    text = f"== summary ==\n\n{text}"
     matches = re.finditer(pattern, text, re.DOTALL)
 
     for match in matches:
@@ -41,22 +44,42 @@ def split_sections(text, source=None):
         title = match.group(2).strip()
         content = match.group(3).strip()
 
+        if prev_level == 0:
+            section_title.append(title)
+            prev_level = level
+        else:
+            if prev_level == level:
+                # pop the last section title
+                section_title.pop()
+                # push the current section title
+                section_title.append(title)
+            elif prev_level < level:
+                # set the parent section title
+                section_title.append(title)
+                prev_level = level
+            elif prev_level > level:
+                section_title.pop()
+                for _ in range(prev_level - level):
+                    section_title.pop()
+                section_title.append(title)
+                prev_level = level
         # Reset section index for the lower level when we encounter a higher-level section
         if level == 1:
             section_counters[2] = -1
-            parent_section = ""
-        section_counters[level] += 1
         if level == 2:
-            parent_section = sections[-1].metadata["title"]  # The parent section is the last level 1 section
+            section_counters[3] = -1
+        section_counters[level] += 1
 
         metadata = {
             "source": source,
             "title": title,
-            "parent_section": parent_section,
+            "parent_section": "_".join(section_title[1:-1]),
             "section_level": level,
             "section_index": section_counters[level]
         }
         if title in ["注释", "参见", "参考文献", "外部链接", "奖牌榜", "比赛日程", "参考"]:
+            continue
+        if skip_empty_sections and not content:
             continue
         sections.append(Document(page_content=content, metadata=metadata))
     return sections
