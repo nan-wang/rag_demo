@@ -73,6 +73,12 @@ def main(num_docs, output_path, ground_truth, response, input_fn):
                 "question": question,
                 "answer": answer
             })
+            try:
+                doc["ground_truth"]["keypoints"] = result.keypoints
+            except Exception as e:
+                print(f"Error: {e}")
+                print(f"Failed to extract keypoints from ground truth for result: {result}")
+                continue
             doc["ground_truth"]["keypoints"] = result.keypoints
 
         if response:
