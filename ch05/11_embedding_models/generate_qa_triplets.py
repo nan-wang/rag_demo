@@ -6,7 +6,7 @@ import dotenv
 from langchain_chroma import Chroma
 from langchain_core.prompts import HumanMessagePromptTemplate, ChatPromptTemplate, SystemMessagePromptTemplate
 from langchain_openai import ChatOpenAI
-from synthetic_data_prompt import SYSTEM_PROMPT, USER_PROMPT_TRIPLET
+from synthetic_data_prompt import SYSTEM_PROMPT, USER_PROMPT
 
 dotenv.load_dotenv()
 
@@ -21,7 +21,7 @@ QUESTION_GEN_SYS_TMPL = (
     SystemMessagePromptTemplate.from_template(SYSTEM_PROMPT))
 
 QUESTION_GEN_USER_TMPL = (
-    HumanMessagePromptTemplate.from_template(USER_PROMPT_TRIPLET))
+    HumanMessagePromptTemplate.from_template(USER_PROMPT))
 
 
 import click
