@@ -1,59 +1,33 @@
-import glob
-
+import json
+from tqdm import tqdm
 import dotenv
 from pathlib import Path
 
 import pkuseg
-from langchain import hub
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import TextLoader
+from langchain_community.embeddings import JinaEmbeddings
 from langchain_community.retrievers import BM25Retriever
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnablePick
 from langchain_openai import ChatOpenAI
-from langchain_openai import OpenAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from utils import load_documents, split_sections, split_chunks, format_docs
 
 dotenv.load_dotenv()
 
 
 def get_all_splits():
-    docs = []
-    for file in glob.glob("../data/*.txt"):
-        loader = TextLoader(file)
-        _docs = loader.load()
-        docs += _docs
-
+    docs = load_documents("../data/*.txt")
     print(f"Loaded {len(docs)} documents")
-
-    # split the documents into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=128,
-        add_start_index=True,
-    )
-
-    return text_splitter.split_documents(docs)
-
-
-vector_db_dir = '../data_chroma_multi_with_metadata'
-collection_name = 'test_db'
-if Path(vector_db_dir).exists():
-    vectorstore = Chroma(persist_directory=vector_db_dir, embedding_function=OpenAIEmbeddings(),
-                         create_collection_if_not_exists=False, collection_name=collection_name)
-    print(f"{vectorstore._chroma_collection.count()} documents loaded")
-else:
-    # walk through the text files under "data" directory
-    all_splits = get_all_splits()
-    print(f"Split the documents into {len(all_splits)} chunks")
-    vectorstore = Chroma.from_documents(
-        documents=all_splits, embedding=OpenAIEmbeddings(), persist_directory=vector_db_dir,
-        collection_name=collection_name)
-
-vector_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 10})
-
-# set up the bm25 retriever
-seg = pkuseg.pkuseg()
+    chunks = []
+    for doc in docs:
+        text = doc.page_content
+        article_title = Path(doc.metadata.get("source", "")).stem
+        sections = split_sections(text, source=article_title)
+        _chunks = split_chunks(sections)
+        chunks.extend(_chunks)
+    return chunks
 
 
 def tokenize_doc(doc_str: str):
@@ -67,44 +41,75 @@ def tokenize_doc(doc_str: str):
     return result
 
 
-all_splits = get_all_splits()
-bm25_retriever = BM25Retriever.from_documents(all_splits, preprocess_func=tokenize_doc)
-bm25_retriever.k = 10
+vector_db_dir = '../data_chroma_jina_embeddings'
+collection_name = 'olympic_games'
+if Path(vector_db_dir).exists():
+    vectorstore = Chroma(
+        persist_directory=vector_db_dir,
+        embedding_function=JinaEmbeddings(model_name="jina-embeddings-v3"),
+        create_collection_if_not_exists=False,
+        collection_name=collection_name)
+    print(f"{vectorstore._chroma_collection.count()} documents loaded")
+else:
+    chunks = get_all_splits()
+    vectorstore = Chroma.from_documents(
+        documents=chunks,
+        embedding=JinaEmbeddings(model_name="jina-embeddings-v3"),
+        persist_directory=vector_db_dir,
+        collection_name=collection_name)
+
+vector_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+
+# set up the bm25 retriever
+seg = pkuseg.pkuseg()
+
+
+chunks = get_all_splits()
+bm25_retriever = BM25Retriever.from_documents(
+    chunks, preprocess_func=tokenize_doc)
+bm25_retriever.k = 5
 
 from langchain.retrievers import EnsembleRetriever
 
 retriever = EnsembleRetriever(retrievers=[vector_retriever, bm25_retriever], weights=[0.5, 0.5])
 
-# retrieved_docs = retriever.invoke("奥运会金牌的挂袋有哪些设计?")
-
-# print(f"Retrieved {len(retrieved_docs)} documents")
-# for d in retrieved_docs:
-#     print(f"Retrieved doc, {repr(d.page_content)}")
-#     print(f"Retrieved doc meta, {d.metadata}")
-#
-# sys.exit(0)
-
 llm = ChatOpenAI(model="gpt-4o-mini")
-prompt = hub.pull("rlm/rag-prompt")
-
-
-def format_docs(docs):
-    output_list = []
-    for idx, doc in enumerate(docs):
-        doc_str = doc.page_content.replace("\n", " ")
-        output_list.append(f"[doc_{idx+1}]{doc_str}")
-    return "\n\n".join(output_list)
+prompt = ChatPromptTemplate.from_template(
+    """You are an assistant for question-answering tasks. 
+Use the following pieces of retrieved context to answer the question. 
+If you don't know the answer, just say that you don't know. 
+Use three sentences maximum and keep the answer concise.
+Question: {question} 
+Context: {context} 
+Answer:
+"""
+)
 
 
 rag_chain = (
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
+        RunnableParallel(
+            context=retriever | format_docs,
+            question=RunnablePassthrough())
+        | RunnableParallel(
+    context=RunnablePick("context"),
+    question=RunnablePick("question"),
+    answer=prompt | llm | StrOutputParser())
 )
 
-query = "中国在奥运会上有哪些重要历史时刻?"
-# query = "哪一届奥运会第一次发现了兴奋剂？"
+results = []
+with open("../03_eval/data_eval/v20241219/qa_pairs_rewrite.json", "r") as f:
+    qa_pairs = json.load(f)
+    for doc in tqdm(qa_pairs):
+        query = doc["query"]
+        result = rag_chain.invoke(query)
+        doc["response"] = {
+            "content": result["answer"],
+            "contexts": [result["context"],]
+        }
+        results.append(doc)
 
-result = rag_chain.invoke(query)
-print(result)
+output_path = "../03_eval/data_metrics/v20241219/ch0505_hybrid/response.json"
+
+Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+with open(output_path, "w") as f:
+    json.dump(results, f, indent=4, ensure_ascii=False)
