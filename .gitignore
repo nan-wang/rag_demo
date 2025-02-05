@@ -176,3 +176,4 @@ toy*.*
 .DS_Store
 */*/*.db
 ch05/03_eval/chinese/*
+ch05/11_embedding_models/finetune_je_v3/*
