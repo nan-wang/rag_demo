@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from agents.qa import sale_qa
-from models.agent_query import QueryInput, AskQueryOutput
+from chains.rag_query import rag_chain
+from models.query import QueryInput, QueryOutput
 from utils.async_utils import async_retry
+
 
 app = FastAPI(
     title="1980-2024年奥运会问答机器人",
     description="1980-2024年奥运会问答机器人API",
-    version="0.6.0",
+    version="0.1.0",
 )
 
 origins = ["*"]
@@ -28,7 +29,7 @@ async def invoke_qa_with_retry(query: str):
     This can help when there are intermittent connection issues
     to external APIs.
     """
-    return await sale_qa.ainvoke({"input": query})
+    return await rag_chain.ainvoke(query)
 
 
 @app.get("/")
@@ -37,6 +38,6 @@ async def get_status():
 
 
 @app.post("/ask")
-async def query_qa(query: QueryInput) -> AskQueryOutput:
+async def query_qa(query: QueryInput) -> QueryOutput:
     query_response = await invoke_qa_with_retry(query.text)
     return query_response
