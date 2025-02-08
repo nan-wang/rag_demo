@@ -2,6 +2,7 @@ services:
   chatbot_api:
     build:
       context: ./api
+    container_name: chatbot_api
     env_file:
       - .env
     ports:
@@ -12,6 +13,7 @@ services:
   chatbot_frontend:
     build:
       context: ./frontend
+    container_name: chatbot_frontend
     env_file:
       - .env
     depends_on:
