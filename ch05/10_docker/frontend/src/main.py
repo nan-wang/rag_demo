@@ -2,73 +2,71 @@ import os
 import requests
 import streamlit as st
 
-CHATBOT_URL = os.getenv("CHATBOT_URL", "http://localhost:8000/hospital-rag-agent")
+CHATBOT_URL = os.getenv("CHATBOT_URL", "http://localhost:8000/ask")
 
 with st.sidebar:
     st.header("About")
     st.markdown(
         """
-        This chatbot interfaces with a
-        [LangChain](https://python.langchain.com/docs/get_started/introduction)
-        agent designed to answer questions about the hospitals, patients,
-        visits, physicians, and insurance payers in  a fake hospital system.
-        The agent uses  retrieval-augment generation (RAG) over both
-        structured and unstructured data that has been synthetically generated.
+        基于LangChain的奥运会问答机器人，可以解答关于1984年到2024年期间历届奥运会的问题。 
         """
     )
 
-    st.header("Example Questions")
-    st.markdown("- Which hospitals are in the hospital system?")
-    st.markdown("- What is the current wait time at wallace-hamilton hospital?")
-    st.markdown(
-        "- At which hospitals are patients complaining about billing and "
-        "insurance issues?"
-    )
-    st.markdown("- What is the average duration in days for closed emergency visits?")
-    st.markdown(
-        "- What are patients saying about the nursing staff at "
-        "Castaneda-Hardy?"
-    )
-    st.markdown("- What was the total billing amount charged to each payer for 2023?")
-    st.markdown("- What is the average billing amount for medicaid visits?")
-    st.markdown("- Which physician has the lowest average visit duration in days?")
-    st.markdown("- How much was billed for patient 789's stay?")
-    st.markdown(
-        "- Which state had the largest percent increase in medicaid visits "
-        "from 2022 to 2023?"
-    )
-    st.markdown("- What is the average billing amount per day for Aetna patients?")
-    st.markdown("- How many reviews have been written from patients in Florida?")
-    st.markdown(
-        "- For visits that are not missing chief complaints, "
-        "what percentage have reviews?"
-    )
-    st.markdown(
-        "- What is the percentage of visits that have reviews for each hospital?"
-    )
-    st.markdown(
-        "- Which physician has received the most reviews for this visits "
-        "they've attended?"
-    )
-    st.markdown("- What is the ID for physician James Cooper?")
-    st.markdown(
-        "- List every review for visits treated by physician 270. Don't leave any out."
-    )
+    st.header("你可以这样问")
+    st.markdown("- 巴黎奥运会的吉祥物是什么?")
+    st.markdown("- 奥运会上有哪些环保措施?")
+    st.markdown("- 北京是在哪一年成功申办冬季奥运会的？")
+    st.markdown("- 在2022年北京冬奥会中，通过哪些平台观看的人数创下了多少纪录？")
+    st.markdown("- Google推出的与2020年奥运会相关的游戏名称是什么？")
+    st.markdown("- 在2010年冬季奥运会上，哪个国家获得了最多金牌？")
+    st.markdown("- 2010年冬季奥林匹克运动会的奖牌有什么特别的设计特点？")
+    st.markdown("- 2018年冬季奥林匹克运动会中，俄罗斯奥委会因何原因被禁止参加比赛？")
+    st.markdown("- 2024年夏季奥林匹克运动会中，马拉松项目是否会开放给公众参与？")
+    st.markdown("- 1984年夏季奥运会上，卡尔·刘易斯获得了多少枚金牌？")
+    st.markdown("- 2022年冬奥会计划招募多少名赛会志愿者？")
+    st.markdown("- 2010年冬季奥林匹克运动会在哪些地方举行？")
+    st.markdown("- 在2020年夏季奥林匹克运动会期间，国立竞技场被称为什么名称？")
+    st.markdown("- 2014年冬季奥林匹克运动会的圣火采集仪式是在何时何地举行的？")
+    st.markdown("- 2022年冬奥会新增了哪些比赛项目？")
+    st.markdown("- 2014年冬季奥运会的火炬是由谁点燃的？")
+    st.markdown("- 2016年夏季奥运会的国内转播权是卖给了哪个集团？")
 
-st.title("Hospital System Chatbot")
-st.info(
-    "Ask me questions about patients, visits, insurance payers, hospitals, "
-    "physicians, reviews, and wait times!"
-)
+st.title("奥运会问答机器人")
+st.info("可以问我关于1984年到2024年期间历届奥运会的问题")
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             "role": "assistant",
-            "output": "亲，想了解哪款车?",
+            "output": "你想了解关于奥运会的什么知识？我知道关于1984年到2024年期间历届奥运会的很多信息",
             "explanation": "N/A"
         },
     ]
+
+import re
+
+def get_explanation(text):
+  """
+  Extracts article title, section title, and content from a text using regex.
+
+  Args:
+    text: The input text in the format "[doc_X]article_title: ... section_title: ... content: ...".
+
+  Returns:
+    A dictionary containing the extracted article_title, section_title, and content.
+    Returns None if the input format is invalid.
+  """
+  pattern = r"\[doc_\d+\]article_title:\s*(.*?)\s*section_title:\s*(.*?)\s*content:\s*(.*)"
+  match = re.search(pattern, text)
+
+  if match:
+    article_title = match.group(1).strip()
+    section_title = match.group(2).strip()
+    content = match.group(3).strip()
+    return article_title, section_title, content
+  else:
+    return None
+
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -76,8 +74,16 @@ for message in st.session_state.messages:
             st.markdown(message["output"])
 
         if "explanation" in message.keys():
-            with st.status("How was this generated", state="complete"):
-                st.info(message["explanation"])
+            with st.status("参考信息", state="complete"):
+                article_title = ""
+                section_title = ""
+                context = ""
+                result = get_explanation(message["explanation"])
+                if result is not None:
+                    article_title, section_title, context = result
+                st.info(f"文章来源：{article_title}")
+                st.info(f"文章章节：{section_title}")
+                st.info(f"文章内容：{context}")
 
 if prompt := st.chat_input("What do you want to know?"):
     st.chat_message("user").markdown(prompt)
@@ -90,8 +96,8 @@ if prompt := st.chat_input("What do you want to know?"):
         response = requests.post(CHATBOT_URL, json=data)
 
         if response.status_code == 200:
-            output_text = response.json()["output"]
-            explanation = response.json()["intermediate_steps"]
+            output_text = response.json()["answer"]
+            explanation = response.json()["selected_content"]
 
         else:
             output_text = """An error occurred while processing your message.
@@ -99,7 +105,7 @@ if prompt := st.chat_input("What do you want to know?"):
             explanation = output_text
 
     st.chat_message("assistant").markdown(output_text)
-    st.status("How was this generated", state="complete").info(explanation)
+    st.status("参考信息", state="complete").info(explanation)
 
     st.session_state.messages.append(
         {
