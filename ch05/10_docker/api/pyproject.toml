@@ -1,0 +1,20 @@
+[project]
+name = "olympic_games_rag_api"
+version = "0.1"
+dependencies = [
+    "asyncio==3.4.3",
+    "fastapi==0.112.0",
+    "langchain==0.3.17",
+    "langchain-community==0.3.16",
+    "langchain-openai==0.3.4",
+    "langchain-text-splitters==0.3.6",
+    "langchain-core==0.3.34",
+    "numpy==1.26.4",
+    "openai==1.61.1",
+    "pydantic==2.8.2",
+    "uvicorn==0.30.6",
+    "tcvectordb==1.6.0",
+]
+
+[project.optional-dependencies]
+dev = ["black", "flake8", "python-dotenv"]

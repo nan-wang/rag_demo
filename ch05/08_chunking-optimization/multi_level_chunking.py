@@ -46,7 +46,9 @@ retriever = vectorstore.as_retriever(
 # query = "奥运火炬传递到达过珠峰吗?"
 # query = "奥运会是什么时候开始停止支持4:3全屏转播的?"
 # query = "中国在越野滑雪项目中的表现怎么样?"
-query = "2024巴黎奥运会有棒球么?"
+# query = "2024巴黎奥运会有棒球么?"
+
+query = "中国在奥运会上有哪些重要历史时刻?"
 retrieved_docs = retriever.invoke(query)
 
 # print(f"Retrieved {len(retrieved_docs)} documents")
@@ -55,7 +57,7 @@ retrieved_docs = retriever.invoke(query)
 #     # print(f"Retrieved doc meta, {doc.metadata}")
 # exit(0)
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06")
+llm = ChatOpenAI(model="gpt-4o-mini")
 prompt = hub.pull("rlm/rag-prompt")
 
 rag_chain = (
