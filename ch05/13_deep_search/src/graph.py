@@ -122,7 +122,6 @@ def search(state: SummaryState, config: RunnableConfig):
         })
     search_str = deduplicate_and_format_sources(
         search_results,
-        max_tokens_per_source=1000,
         fetch_full_page=False
     )
     return {

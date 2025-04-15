@@ -26,7 +26,7 @@ def tavily_search(query: str, fetch_full_page: bool = True, max_results: int = 3
 
 def deduplicate_and_format_sources(
         search_response: Union[Dict[str, Any], List[Dict[str, Any]]],
-        max_tokens_per_source: int,
+        max_tokens_per_source: int = 1000,
         fetch_full_page: bool = True) -> str:
     if isinstance(search_response, dict):
         sources_list = search_response["results"]
