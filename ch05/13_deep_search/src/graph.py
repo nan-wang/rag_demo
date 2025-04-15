@@ -116,7 +116,7 @@ def search(state: SummaryState, config: RunnableConfig):
         url = doc.metadata.get("source", "")
         title = doc.metadata.get("title", "")
         search_results["results"].append({
-            "url": f"{url}:{title}",
+            "url": url,
             "content": content,
             "title": title
         })
