@@ -46,7 +46,7 @@ if Path(vector_db_dir).exists():
         create_collection_if_not_exists=False,
         collection_name=collection_name)
     print(f"{vectorstore._chroma_collection.count()} documents loaded")
-vector_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 10})
+vector_retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
 seg = pkuseg.pkuseg()
 
@@ -64,10 +64,10 @@ def tokenize_doc(doc_str: str):
 chunks = get_all_splits()
 bm25_retriever = BM25Retriever.from_documents(
     chunks, preprocess_func=tokenize_doc)
-bm25_retriever.k = 10
+bm25_retriever.k = 5
 ensemble_retriever = EnsembleRetriever(retrievers=[vector_retriever, bm25_retriever], weights=[0.5, 0.5])
 
-compressor = JinaRerank(model="jina-reranker-v2-base-multilingual", top_n=10)
+compressor = JinaRerank(model="jina-reranker-v2-base-multilingual", top_n=3)
 retriever = ContextualCompressionRetriever(
     base_compressor=compressor, base_retriever=ensemble_retriever
 )
