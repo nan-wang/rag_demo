@@ -3,7 +3,6 @@ import operator
 import os
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Optional, Literal, Dict, Union, List
 
 import dotenv
@@ -18,11 +17,6 @@ from typing_extensions import Annotated
 
 
 class Configuration(BaseModel):
-    max_web_search_results: int = Field(
-        default=1,
-        title="Max Web Search Results",
-        description="Maximum number of web search results to return"
-    )
     max_web_search_loops: int = Field(
         default=3,
         title="Search Depth",
@@ -33,16 +27,6 @@ class Configuration(BaseModel):
         title="LLM Model Name",
         description="Name of the LLM model to use"
     )
-    search_api: Literal["tavily", "duckduckgo"] = Field(
-        default="tavily",
-        title="Search API",
-        description="Web search API to use"
-    )
-    fetch_full_page: bool = Field(
-        default=True,
-        title="Fetch Full Page",
-        description="Include the full page content in the search results"
-    )
     strip_thinking_tokens: bool = Field(
         default=True,
         title="Strip Thinking Tokens",
@@ -51,7 +35,6 @@ class Configuration(BaseModel):
 
     @classmethod
     def from_runnable_config(cls, config: Optional[RunnableConfig] = None) -> "Configuration":
-        """Create a Configuration instance from a RunnableConfig."""
         configurable = config.configurable if hasattr(config, 'configurable') and config else {}
 
         raw_values: dict[str, Any] = {
@@ -63,30 +46,6 @@ class Configuration(BaseModel):
 
         return cls(**values)
 
-
-query_writer_instructions = """Your goal is to generate a search query that is useful to retrieve related information
- from a collection of Wikipedia pages for answering the user query.
-
-<USER_QUERY>
-{user_query}
-</USER_QUERY>
-
-<FORMAT>
-Format your response as a JSON object with ALL three of these exact keys:
-   - "query": The actual search query string
-   - "rationale": Brief explanation of why this query is relevant
-</FORMAT>
-
-<EXAMPLE>
-Example user_query: 中国在奥运会上有哪些重要历史时刻?
-Example output:
-{{
-    "query": "中国 奥运会 第一次",
-    "rationale": "搜索中国在奥运会历史上的第一次重要时刻，例如首次参加、首次获奖等。"
-}}
-</EXAMPLE>
-
-Provide your response in JSON format:"""
 
 summarizer_instructions = """
 <GOAL>
@@ -172,10 +131,6 @@ class SummaryStateOutput:
     running_summary: str = field(default=None)
 
 
-def get_config_value(value: Any) -> str:
-    return value if isinstance(value, str) else value.value
-
-
 def strip_thinking_tokens(text: str) -> str:
     while "<think>" in text and "</think>" in text:
         start = text.find("<think>")
@@ -204,20 +159,16 @@ dotenv.load_dotenv()
 
 vector_db_dir = '../../data_chroma_jina_embeddings'
 collection_name = 'olympic_games'
-if Path(vector_db_dir).exists():
-    vectorstore = Chroma(
-        persist_directory=vector_db_dir,
-        embedding_function=JinaEmbeddings(model_name="jina-embeddings-v3"),
-        create_collection_if_not_exists=False,
-        collection_name=collection_name)
-    print(f"{vectorstore._chroma_collection.count()} documents loaded")
+vectorstore = Chroma(
+    persist_directory=vector_db_dir,
+    embedding_function=JinaEmbeddings(model_name="jina-embeddings-v3"),
+    create_collection_if_not_exists=False,
+    collection_name=collection_name)
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
 
 def deduplicate_and_format_sources(
-        search_response: Union[Dict[str, Any], List[Dict[str, Any]]],
-        max_tokens_per_source: int = 1000,
-        fetch_full_page: bool = True) -> str:
+        search_response: Union[Dict[str, Any], List[Dict[str, Any]]]) -> str:
     if isinstance(search_response, dict):
         sources_list = search_response["results"]
     elif isinstance(search_response, list):
@@ -240,55 +191,12 @@ def deduplicate_and_format_sources(
         formatted_text += f"Source: {source['title']}\n===\n"
         formatted_text += f"URL: {source['url']}\n===\n"
         formatted_text += f"Most relevant content from source: {source['content']}\n===\n"
-        if fetch_full_page:
-            # Using rough estimate of 4 characters per token
-            char_limit = max_tokens_per_source * 4
-            # Handle None raw_content
-            raw_content = source.get('raw_content', '')
-            if raw_content is None:
-                raw_content = ''
-                print(f"Warning: No raw_content found for source {source['url']}")
-            if len(raw_content) > char_limit:
-                raw_content = raw_content[:char_limit] + "... [truncated]"
-            formatted_text += f"Full source content limited to {max_tokens_per_source} tokens: {raw_content}\n\n"
     return formatted_text.strip()
 
 
-def generate_query(state: SummaryState, config: RunnableConfig):
-    """Generate a search query based on the current state.
-
-    :param state:
-    :param config:
-    :return:
-    """
-    formatted_prompt = query_writer_instructions.format(
-        user_query=state.user_query
-    )
-
-    configurable = Configuration.from_runnable_config(config)
-    llm = ChatOpenAI(model=configurable.reasoning_llm, temperature=0)
-
-    result = llm.invoke(
-        [SystemMessage(content=formatted_prompt),
-         HumanMessage(content=f"Generate a query that is useful to retrieve related information:")]
-    )
-
-    content = result.content
-
-    try:
-        if content.startswith("```json"):
-            content = extract_json_from_markdown(content)
-        query = json.loads(content)
-        search_query = query["query"]
-    except (json.JSONDecodeError, KeyError):
-        if configurable.strip_thinking_tokens:
-            content = strip_thinking_tokens(content)
-        search_query = content
-    return {"search_query": search_query}
-
-
 def search(state: SummaryState):
-    print(f"search query: {state.search_query}")
+    if state.search_query is None:
+        state.search_query = state.user_query
     results = retriever.invoke(f"{state.search_query}")
     search_results = {"results": []}
     for idx, doc in enumerate(results):
@@ -300,10 +208,7 @@ def search(state: SummaryState):
             "content": content,
             "title": title
         })
-    search_str = deduplicate_and_format_sources(
-        search_results,
-        fetch_full_page=False
-    )
+    search_str = deduplicate_and_format_sources(search_results)
     return {
         "sources_gathered": [format_sources(search_results)],
         "search_loop_count": state.search_loop_count + 1,
@@ -393,19 +298,17 @@ def route_search(state: SummaryState, config: RunnableConfig) -> Literal["finali
 
 
 builder = StateGraph(SummaryState, input=SummaryStateInput, output=SummaryStateOutput, config_schema=Configuration)
-builder.add_node("generate_query", generate_query)
 builder.add_node("search", search)
 builder.add_node("summarize_sources", summarize_sources)
 builder.add_node("reflect_on_summary", reflect_on_summary)
 builder.add_node("finalize_summary", finalize_summary)
 
-builder.add_edge(START, "generate_query")
-builder.add_edge("generate_query", "search")
+builder.add_edge(START, "search")
 builder.add_edge("search", "summarize_sources")
 builder.add_edge("summarize_sources", "reflect_on_summary")
 builder.add_conditional_edges("reflect_on_summary", route_search)
 builder.add_edge("finalize_summary", END)
 
-graph = builder.compile(debug=False)
+graph = builder.compile()
 output = graph.invoke({"user_query": "2014年冬奥会的吉祥物是什么?是如何被选出的？"})
 print(output["running_summary"])
