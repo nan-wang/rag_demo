@@ -5,7 +5,7 @@ from typing_extensions import Annotated
 
 @dataclass(kw_only=True)
 class SummaryState:
-    search_topic: str = field(default=None)  # search topic
+    user_query: str = field(default=None)  # original user query
     search_query: str = field(default=None)  # search query
     web_search_results: Annotated[list, operator.add] = field(default_factory=list)  # web search results
     sources_gathered: Annotated[list, operator.add] = field(default_factory=list)
@@ -15,7 +15,7 @@ class SummaryState:
 
 @dataclass(kw_only=True)
 class SummaryStateInput:
-    search_topic: str = field(default=None)
+    user_query: str = field(default=None)
 
 
 @dataclass(kw_only=True)

@@ -5,16 +5,12 @@ def get_current_date():
     return datetime.now().strftime("%B %d, %Y")
 
 
-query_writer_instructions = """Your goal is to generate a targeted web search query.
+query_writer_instructions = """Your goal is to generate a search query that is useful to retrieve related information
+ from a collection of Wikipedia pages for answering the user query.
 
-<CONTEXT>
-Current date: {current_date}
-Please ensure your queries account for the most current information available as of this date.
-</CONTEXT>
-
-<TOPIC>
-{search_topic}
-</TOPIC>
+<USER_QUERY>
+{user_query}
+</USER_QUERY>
 
 <FORMAT>
 Format your response as a JSON object with ALL three of these exact keys:
@@ -23,10 +19,11 @@ Format your response as a JSON object with ALL three of these exact keys:
 </FORMAT>
 
 <EXAMPLE>
+Example user_query: 中国在奥运会上有哪些重要历史时刻?
 Example output:
 {{
-    "query": "machine learning transformer architecture explained",
-    "rationale": "Understanding the fundamental structure of transformer models"
+    "query": "中国 奥运会 第一次",
+    "rationale": "搜索中国在奥运会历史上的第一次重要时刻，例如首次参加、首次获奖等。"
 }}
 </EXAMPLE>
 
@@ -39,18 +36,18 @@ Generate a high-quality summary of the provided context.
 
 <REQUIREMENTS>
 When creating a NEW summary:
-1. Highlight the most relevant information related to the user topic from the search results
+1. Highlight the most relevant information related to the user query from the search results
 2. Ensure a coherent flow of information
 
 When EXTENDING an existing summary:                                                                                                                 
-1. Read the existing summary and new search results carefully.                                                    
+1. Read the existing summary and new search results carefully.                                              
 2. Compare the new information with the existing summary.                                                         
 3. For each piece of new information:                                                                             
     a. If it's related to existing points, integrate it into the relevant paragraph.                               
     b. If it's entirely new but relevant, add a new paragraph with a smooth transition.                            
-    c. If it's not relevant to the user topic, skip it.                                                            
-4. Ensure all additions are relevant to the user's topic.                                                         
-5. Verify that your final output differs from the input summary.                                                                                                                                                            
+    c. If it's not relevant to the user query, skip it.                                                            
+4. Ensure all additions are relevant to the user's query.                                                         
+5. Verify that your final output differs from the input summary.
 < /REQUIREMENTS >
 
 < FORMATTING >
@@ -62,7 +59,7 @@ Think carefully about the provided Context first. Then generate a summary of the
 </Task>
 """
 
-reflection_instructions = """You are an expert research assistant analyzing a summary about {search_topic}.
+reflection_instructions = """You are an expert research assistant analyzing a summary to ask the user's query: {user_query}.
 
 <GOAL>
 1. Identify knowledge gaps or areas that need deeper exploration
@@ -71,7 +68,8 @@ reflection_instructions = """You are an expert research assistant analyzing a su
 </GOAL>
 
 <REQUIREMENTS>
-Ensure the follow-up question is self-contained and includes necessary context for web search.
+Ensure the follow-up question is self-contained and includes necessary context for search from a collection of Wikipedia pages. 
+
 </REQUIREMENTS>
 
 <FORMAT>
@@ -86,6 +84,10 @@ Reflect carefully on the Summary to identify knowledge gaps and produce a follow
     "knowledge_gap": "The summary lacks information about performance metrics and benchmarks",
     "follow_up_query": "What are typical performance benchmarks and metrics used to evaluate [specific technology]?"
 }}
+
+If you don't find any knowledge gaps, just say "No knowledge gaps found." in the knowledge_gap and return an empty string in the follow_up_query.
+
+MUST RETURN the ``knowledge_gap`` and ``follow_up_query`` in Chinese!!!
 </Task>
 
 Provide your analysis in JSON format:"""
