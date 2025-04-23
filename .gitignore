@@ -175,7 +175,7 @@ toy*.*
 */*/.DS_Store
 .DS_Store
 */*/*.db
-ch05/03_eval/chinese/*
-ch05/11_embedding_models/finetune_je_v3/*
-ch05/12_generation_optimization/.*.*.env
-ch05/12_generation_optimization/.*.env
+ch05.v1/03_eval/chinese/*
+ch05.v1/11_embedding_models/finetune_je_v3/*
+ch05.v1/12_generation_optimization/.*.*.env
+ch05.v1/12_generation_optimization/.*.env
