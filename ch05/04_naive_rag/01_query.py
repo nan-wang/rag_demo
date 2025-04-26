@@ -1,5 +1,7 @@
-import dotenv
+import os
 from pprint import pprint
+
+import dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,10 +9,11 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
 from typing_extensions import List, TypedDict
 
-VECTOR_DB_DIR = "../index_chroma_naive"
-COLLECTION_NAME = "olympic_games"
-
 dotenv.load_dotenv()
+
+VECTOR_DB_DIR = os.getenv("VECTOR_DB_DIR")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME")
+
 
 class State(TypedDict):
     question: str
@@ -39,13 +42,13 @@ Answer:
 """
 )
 
+llm = ChatOpenAI(model="Qwen/Qwen2.5-7B-Instruct")
+
 
 def retrieve(state: State):
-    retrieved_docs = vector_store.similarity_search(state["question"])
+    retrieved_docs = (
+        vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 4}).invoke(state["question"]))
     return {"context": retrieved_docs}
-
-
-llm = ChatOpenAI(model="Qwen/Qwen2.5-7B-Instruct")
 
 
 def generate(state: State):
