@@ -31,7 +31,7 @@ def get_chunks(doc_list: list[Document]):
     return text_splitter.split_documents(doc_list)
 
 
-docs = load_documents("../data/*.txt")
+docs = load_documents("../../data/*.txt")
 print(f"Loaded {len(docs)} documents")
 
 chunks = get_chunks(docs)

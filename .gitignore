@@ -179,4 +179,4 @@ ch05.v1/03_eval/chinese/*
 ch05.v1/11_embedding_models/finetune_je_v3/*
 ch05.v1/12_generation_optimization/.*.*.env
 ch05.v1/12_generation_optimization/.*.env
-ch05/04_naive_rag/index_chroma_naive/
+ch05/03_langchain_core_and_langgraph/10_naive_rag/index_chroma_naive/
