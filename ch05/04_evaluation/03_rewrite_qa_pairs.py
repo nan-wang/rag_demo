@@ -3,6 +3,7 @@ from rewrite_question_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pathlib import Path
+from pydantic import BaseModel, Field
 
 dotenv.load_dotenv()
 
@@ -18,14 +19,13 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-from langchain_core.pydantic_v1 import BaseModel, Field
 
 class QAPair(BaseModel):
     question: str = Field(..., description="The question generated from the context.")
     answer: str = Field(..., description="The answer to the question.")
 
 
-llm = ChatOpenAI(model="gpt-4o-2024-08-06").with_structured_output(QAPair)
+llm = ChatOpenAI(model="Qwen/Qwen3-8B").with_structured_output(QAPair)
 
 chain = (prompt | llm)
 
