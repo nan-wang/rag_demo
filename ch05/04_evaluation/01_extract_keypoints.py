@@ -2,6 +2,7 @@ import click
 import dotenv
 import tqdm
 import json
+from loguru import logger
 
 from keypoints_extract_prompt import SYSTEM_PROMPT, USER_PROMPT
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
@@ -10,7 +11,7 @@ from pathlib import Path
 from datamodels import KeyPoints
 
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(".oai.env")
 
 
 @click.command()
@@ -54,17 +55,16 @@ def main(num_docs, output_path, ground_truth, response, input_fn):
         ]
     )
 
-    llm = ChatOpenAI(model="gpt-4o-mini").with_structured_output(KeyPoints)
+    llm = ChatOpenAI(model="gpt-4.1-mini").with_structured_output(KeyPoints)
 
     chain = (prompt | llm)
 
-    # input_path = "data_eval/results.v20241219.naive_rag.json"
     with open(input_fn, 'r') as f:
         data = json.load(f)
-    print(f"Loaded from {input_fn}")
+    logger.info(f"Loaded from {input_fn}")
 
     results = []
-    print(f"Selected {num_docs if num_docs!=-1 else len(data)} from {len(data)} documents")
+    logger.info(f"Selected {num_docs if num_docs!=-1 else len(data)} from {len(data)} documents")
     for doc in tqdm.tqdm(data[:num_docs]):
         question = doc['query']
         if ground_truth:
@@ -76,8 +76,8 @@ def main(num_docs, output_path, ground_truth, response, input_fn):
             try:
                 doc["ground_truth"]["keypoints"] = result.keypoints
             except Exception as e:
-                print(f"Error: {e}")
-                print(f"Failed to extract keypoints from ground truth for result: {result}")
+                logger.info(f"Error: {e}")
+                logger.info(f"Failed to extract keypoints from ground truth for result: {result}")
                 continue
             doc["ground_truth"]["keypoints"] = result.keypoints
 
@@ -94,7 +94,7 @@ def main(num_docs, output_path, ground_truth, response, input_fn):
     Path(output_fn).parent.mkdir(parents=True, exist_ok=True)
     with open(output_fn, 'w') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
-    print(f"Saved the results to {output_fn}")
+    logger.info(f"Saved the results to {output_fn}")
 
 
 if __name__ == "__main__":
