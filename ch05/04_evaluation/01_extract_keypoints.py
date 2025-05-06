@@ -98,5 +98,5 @@ def main(num_docs, output_path, ground_truth, response, input_fn):
 
 
 if __name__ == "__main__":
-    # python extract_keypoints.py -n 10 -g -r -o data_metrics/v20241219/toy data_metrics/v20241219/ch0503_naive/response.json
+    # python 01_extract_keypoints.py -n 10 -g -r -o data_metrics/v20241219/toy data_metrics/v20241219/ch0503_naive/response.json
     main()
