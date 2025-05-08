@@ -49,4 +49,3 @@ router = prompt | structure_llm
 query = "里约奥运会哪个国家获得的金牌最多?"
 result = router.invoke({"question": query})
 print(result)
-exit(0)
