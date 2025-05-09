@@ -181,3 +181,4 @@ ch05.v1/12_generation_optimization/.*.*.env
 ch05.v1/12_generation_optimization/.*.env
 ch05/03_langchain_core_and_langgraph/10_naive_rag/index_chroma_naive/
 ch05/04_evaluation/.oai.env
+ch05/10_query_preprocessing/.oai.env
