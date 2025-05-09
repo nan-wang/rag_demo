@@ -1,0 +1,24 @@
+services:
+  chatbot_api:
+    build:
+      context: ./api
+    container_name: chatbot_api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+
+  chatbot_frontend:
+    build:
+      context: ./frontend
+    container_name: chatbot_frontend
+    env_file:
+      - .env
+    depends_on:
+      - chatbot_api
+    ports:
+      - "8501:8501"
+    expose:
+      - "8501"
