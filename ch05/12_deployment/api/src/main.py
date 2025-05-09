@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from chains.rag_query import rag_graph
+from rag.rag_query import rag_graph
 from models.query import QueryInput, QueryOutput
 from utils.async_utils import async_retry
 
